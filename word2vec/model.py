@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 
-class SkipGram(nn.Module):
+class W2VBase(nn.Module):
     def __init__(self, vocab_size: int, embedding_size: int, max_norm: float = 1.0):
         super().__init__()
         self._input_embedding = nn.Embedding(vocab_size, embedding_size, max_norm=max_norm)
@@ -18,15 +18,34 @@ class SkipGram(nn.Module):
     def embed_outs(self, outputs: torch.Tensor) -> torch.Tensor:
         return self._output_embedding(outputs)
 
+
+class SkipGram(W2VBase):
     def forward(self, inputs: torch.Tensor, outputs: torch.Tensor, proba: bool = True) -> torch.Tensor:
         # B is batch size, V is vocabulary size and E is embedding size
-        # inputs, outputs shape: (B, V)
-        batch_size, _ = inputs.shape
+        # inputs shape: (B, 1, V)
+        # outputs shape: (B, N, V)
+        batch_size, _, _ = outputs.shape
 
-        inputs_emb = self.embed_inputs(inputs).view(batch_size, 1, -1)  # shape: (B, 1, E)
-        outputs_emb = self.embed_outs(outputs).view(batch_size, -1, 1) # shape: (B, E, 1)
+        inputs_emb = self.embed_inputs(inputs).view(batch_size, -1, 1)  # shape: (B, E, 1)
+        outputs_emb = self.embed_outs(outputs)  # shape: (B, N, E)
 
-        scalars = torch.bmm(inputs_emb, outputs_emb).view(-1)  # shape: (B)
+        scalars = torch.bmm(outputs_emb, inputs_emb).view(batch_size, -1)  # shape: (B, N)
+        if proba:
+            scalars = torch.sigmoid(scalars)
+        return scalars
+
+
+class CBOW(nn.Module):
+    def forward(self, inputs: torch.Tensor, outputs: torch.Tensor, proba: bool = True) -> torch.Tensor:
+        # B is batch size, V is vocabulary size and E is embedding size
+        # inputs shape: (B, N, V)
+        # outputs shape: (B, 1, V)
+        batch_size, _, _ = outputs.shape
+
+        inputs_emb = torch.mean(self.embed_inputs(inputs), dim=1).view(batch_size, -1, 1)  # shape: (B, E, 1)
+        outputs_emb = self.embed_outs(outputs)  # shape: (B, 1, E)
+
+        scalars = torch.bmm(outputs_emb, inputs_emb).view(batch_size, -1)  # shape: (B, 1)
         if proba:
             scalars = torch.sigmoid(scalars)
         return scalars
