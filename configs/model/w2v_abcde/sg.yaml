@@ -1,0 +1,4 @@
+_target_: word2vec.model.SkipGram
+embedding_size: 2
+max_norm: 1.0
+# vocab_size - unknown until dataset is loaded
