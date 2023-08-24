@@ -12,6 +12,10 @@ class W2VBase(nn.Module):
         torch.nn.init.xavier_uniform_(self._input_embedding.weight)
         torch.nn.init.xavier_uniform_(self._output_embedding.weight)
 
+    @property
+    def embedding(self) -> torch.Tensor:
+        return self._input_embedding.weight.to('cpu').data
+
     def embed_inputs(self, inputs: torch.Tensor) -> torch.Tensor:
         return self._input_embedding(inputs)
 
@@ -21,10 +25,10 @@ class W2VBase(nn.Module):
 
 class SkipGram(W2VBase):
     def forward(self, inputs: torch.Tensor, outputs: torch.Tensor, proba: bool = True) -> torch.Tensor:
-        # B is batch size, V is vocabulary size and E is embedding size
-        # inputs shape: (B, 1, V)
-        # outputs shape: (B, N, V)
-        batch_size, _, _ = outputs.shape
+        # B is batch size, E is embedding size
+        # inputs shape: (B, 1)
+        # outputs shape: (B, N)
+        batch_size, _ = outputs.shape
 
         inputs_emb = self.embed_inputs(inputs).view(batch_size, -1, 1)  # shape: (B, E, 1)
         outputs_emb = self.embed_outs(outputs)  # shape: (B, N, E)
@@ -37,10 +41,10 @@ class SkipGram(W2VBase):
 
 class CBOW(nn.Module):
     def forward(self, inputs: torch.Tensor, outputs: torch.Tensor, proba: bool = True) -> torch.Tensor:
-        # B is batch size, V is vocabulary size and E is embedding size
-        # inputs shape: (B, N, V)
-        # outputs shape: (B, 1, V)
-        batch_size, _, _ = outputs.shape
+        # B is batch size, E is embedding size
+        # inputs shape: (B, N)
+        # outputs shape: (B, 1)
+        batch_size, _ = outputs.shape
 
         inputs_emb = torch.mean(self.embed_inputs(inputs), dim=1).view(batch_size, -1, 1)  # shape: (B, E, 1)
         outputs_emb = self.embed_outs(outputs)  # shape: (B, 1, E)

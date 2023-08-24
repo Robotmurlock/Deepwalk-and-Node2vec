@@ -2,7 +2,7 @@
 Word2Vec simple dataloader implementation.
 """
 import re
-from typing import List, Callable, Tuple
+from typing import List, Tuple
 
 import torch
 from torch.utils.data import Dataset
@@ -119,32 +119,36 @@ class W2VDataset(Dataset):
         return indices
 
 
-def create_w2v_collate(mode: str, context_radius: int, max_length: int) -> Callable[[List[torch.Tensor]], Tuple[torch.Tensor, torch.Tensor]]:
-    assert mode.lower() in ['sg', 'cbow'], 'Invalid collate mode! Choose "sg" or "cbow"!'
-    min_text_length = 2 * context_radius + 1
+class W2VCollateFunctional:
+    def __init__(self, mode: str, context_radius: int, max_length: int):
+        assert mode.lower() in ['sg', 'cbow'], 'Invalid collate mode! Choose "sg" or "cbow"!'
+        self._mode = mode
+        self._context_radius = context_radius
+        self._min_text_length = 2 * context_radius + 1
+        self._max_length = max_length
 
-    def w2v_collate(batch_text: List[torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __call__(self, batch_text: List[torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         batch_inputs, batch_targets = [], []
         for text in batch_text:
-            text = text[:max_length]  # clip text
+            text = text[:self._max_length]  # clip text
             text_length = text.shape[0]
-            assert text_length >= min_text_length, f'Text is too short! [{text_length=}] < [{min_text_length=}]'
+            assert text_length >= self._min_text_length, f'Text is too short! [{text_length=}] < [{self._min_text_length=}]'
 
-            for center_i in range(context_radius, text_length - context_radius):
-                if mode == 'sg':
+            for center_i in range(self._context_radius, text_length - self._context_radius):
+                if self._mode == 'sg':
                     # Logic test example:
                     # text_length = 8, context_radius = 3
                     # => center_i in range(3, 8-3) = range(3, 5) = [3, 4]
                     # for center_i = 3 => inputs = words[3], targets = words[0:3] | words[4:7]
                     # for center_i = 4 => inputs = words[4], targets = words[1:4] | words[5:8]
 
-                    inputs = text[center_i]
-                    targets = torch.cat([text[center_i - context_radius:center_i], text[center_i + 1:center_i + 1 + context_radius]])
-                elif mode == 'cbow':
+                    inputs = text[center_i:center_i+1]
+                    targets = torch.cat([text[center_i - self._context_radius:center_i], text[center_i + 1:center_i + 1 + self._context_radius]])
+                elif self._mode == 'cbow':
                     # Logic is "inverse" of SG
 
-                    inputs = torch.cat([text[center_i - context_radius:center_i], text[center_i + 1:center_i + 1 + context_radius]])
-                    targets = text[center_i]
+                    inputs = torch.cat([text[center_i - self._context_radius:center_i], text[center_i + 1:center_i + 1 + self._context_radius]])
+                    targets = text[center_i:center_i+1]
                 else:
                     raise AssertionError('Invalid Program State!')
 
@@ -153,8 +157,6 @@ def create_w2v_collate(mode: str, context_radius: int, max_length: int) -> Calla
 
         batch_inputs, batch_targets = torch.stack(batch_inputs), torch.stack(batch_targets)
         return batch_inputs, batch_targets
-
-    return w2v_collate
 
 
 
