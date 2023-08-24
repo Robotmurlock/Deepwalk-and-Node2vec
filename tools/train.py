@@ -6,10 +6,7 @@ from tqdm import tqdm
 from word2vec.dataloader import W2VDataset, W2VCollateFunctional
 from word2vec.loss import NegativeSamplingLoss
 from word2vec.model import SkipGram
-
-
-def generate_noise_batch(batch_size: int, neg_samples: int, vocab_size: int):
-    return torch.randint(low=0, high=vocab_size, size=(batch_size, neg_samples), dtype=torch.long)
+from word2vec.utils import generate_noise_batch, pairwise_cosine_similarity
 
 
 def train_model(
@@ -21,11 +18,6 @@ def train_model(
     collate_fn: W2VCollateFunctional,
     device: str
 ) -> None:
-    words = ['book', 'king']
-    tokens = torch.tensor(dataset.vocab(words), dtype=torch.long)
-    print(tokens, type(tokens))
-    int('stop')
-
     # Trainer config
     max_epochs = solver_config['max_epochs']
     learning_rate = solver_config['lr']
@@ -72,24 +64,36 @@ def train_model(
 
 
 def main() -> None:
-    dataset = W2VDataset(dataset_name='wiki-text-2', split='train')
+    dataset = W2VDataset(dataset_name='abcde', split='train', context_radius=1, min_word_frequency=1)
+    model = SkipGram(vocab_size=len(dataset.vocab), embedding_size=2)
 
     train_model(
-        model=SkipGram(vocab_size=len(dataset.vocab), embedding_size=32),
+        model=model,
         loss_func=NegativeSamplingLoss(proba_input=False),
         dataset=dataset,
         solver_config={
-            'max_epochs': 5,
-            'lr': 1e-3,
-            'neg_samples': 5,
+            'max_epochs': 100,
+            'lr': 1e-1,
+            'neg_samples': 1,
         },
         dataloader_config={
             'num_workers': 8,
-            'batch_size': 32
+            'batch_size': 4
         },
-        collate_fn=W2VCollateFunctional(mode='sg', context_radius=5, max_length=256),
+        collate_fn=W2VCollateFunctional(mode='sg', context_radius=1, max_length=256),
         device='cuda:0'
     )
+
+    print(dataset.vocab.get_stoi())
+    inverse_map = {v: k for k, v in dataset.vocab.get_stoi().items()}
+    input_emb = model.input_embedding
+    output_emb = model.output_embedding
+    sim = pairwise_cosine_similarity(input_emb, output_emb)
+    print(sim)
+    closest = torch.argmax(sim, dim=-1)
+    closest = [inverse_map[int(x.item())] for x in closest]
+    print(list(zip([inverse_map[i] for i in range(sim.shape[0])], closest)))
+
 
 
 if __name__ == '__main__':

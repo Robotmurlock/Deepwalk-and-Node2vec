@@ -13,8 +13,12 @@ class W2VBase(nn.Module):
         torch.nn.init.xavier_uniform_(self._output_embedding.weight)
 
     @property
-    def embedding(self) -> torch.Tensor:
+    def input_embedding(self) -> torch.Tensor:
         return self._input_embedding.weight.to('cpu').data
+
+    @property
+    def output_embedding(self) -> torch.Tensor:
+        return self._output_embedding.weight.to('cpu').data
 
     def embed_inputs(self, inputs: torch.Tensor) -> torch.Tensor:
         return self._input_embedding(inputs)

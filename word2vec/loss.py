@@ -12,7 +12,7 @@ class NegativeSamplingLoss(nn.Module):
         positive_labels = torch.ones_like(positive_logits, dtype=torch.float32).to(positive_logits)
         positive_loss = self._bce(positive_logits, positive_labels).sum(-1)
 
-        negative_labels = torch.ones_like(negative_logits, dtype=torch.float32).to(negative_logits)
+        negative_labels = torch.zeros_like(negative_logits, dtype=torch.float32).to(negative_logits)
         negative_loss = self._bce(negative_logits, negative_labels).sum(-1)
 
         return torch.mean(positive_loss + negative_loss), torch.mean(positive_loss), torch.mean(negative_loss)

@@ -12,7 +12,7 @@ from torchtext.vocab import build_vocab_from_iterator
 
 class TestDataset:
     """
-    Test dataset used to test dataloader
+    Test dataset used to test dataloader.
     """
     def __init__(self, root: str, split: str):
         _, _ = root, split  # Ignored
@@ -34,11 +34,48 @@ class TestDataset:
         return sentence
 
 
+class ABCDEDataset:
+    """
+    Simple dataset used to test model capability. Model should be able to learn:
+    - `a` and `b` go together in a sentence
+    - `c` and `d` go together in a sentence
+    - `e` goes alone in a sentence
+    """
+    def __init__(self, root: str, split: str):
+        _, _ = root, split  # Ignored
+        self._sentences = [
+            'a b a b a b a b a b',  # `a` goes with `b`
+            'a b a b a b',
+            'b a b a',
+            'a b a b a b a b',
+            'c d c d c d c d',  # `c` goes with `d`
+            'd c d c d c',
+            'c d c d c d',
+            'e e e e e e e e',  # `e` goes alone
+            'e e e'
+        ]
+
+        # State
+        self._index = 0
+
+    def __iter__(self) -> 'ABCDEDataset':
+        self._index = 0
+        return self
+
+    def __next__(self):
+        if self._index >= len(self._sentences):
+            raise StopIteration('Finished.')
+
+        sentence = self._sentences[self._index]
+        self._index += 1
+        return sentence
+
 
 SUPPORTED_DATASETS = {
     'wiki-text-2': WikiText2,
     'wiki-test-103': WikiText103,
-    'test': TestDataset
+    'test': TestDataset,
+    'abcde': ABCDEDataset
 }
 
 
@@ -161,7 +198,7 @@ class W2VCollateFunctional:
 
 
 def run_test() -> None:
-    test_dataset = W2VDataset(dataset_name='test', split='train', min_word_frequency=2, context_radius=1)
+    test_dataset = W2VDataset(dataset_name='abcde', split='train', min_word_frequency=2, context_radius=1)
     print(f'Vocabulary: {test_dataset.vocab.get_stoi()}')
     print('Samples:')
     for i in range(len(test_dataset)):
