@@ -43,7 +43,7 @@ class SkipGram(W2VBase):
         return scalars
 
 
-class CBOW(nn.Module):
+class CBOW(W2VBase):
     def forward(self, inputs: torch.Tensor, outputs: torch.Tensor, proba: bool = True) -> torch.Tensor:
         # B is batch size, E is embedding size
         # inputs shape: (B, N)

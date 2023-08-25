@@ -1,0 +1,5 @@
+defaults:
+  - w2v_config
+  - model: w2v_abcde/cbow.yaml
+  - datamodule: w2v_abcde.yaml
+  - train: w2v_abcde/cbow.yaml

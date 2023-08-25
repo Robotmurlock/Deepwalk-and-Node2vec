@@ -1,16 +1,18 @@
 import copy
 from typing import Iterator
-from typing import Union, List, Optional
+from typing import Union, Optional
+from dataclasses import field
 
+from hydra.core.config_store import ConfigStore
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 from pydantic.dataclasses import dataclass
 from torch import nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
-from hydra.core.config_store import ConfigStore
 from torch.utils.data import DataLoader
 
+from tools.common import RUNS_PATH
 from word2vec.dataloader import W2VDataset, W2VCollateFunctional
 from word2vec.trainer import Word2VecTrainer
 
@@ -125,11 +127,18 @@ class DatamoduleConfig:
             shuffle=True
         )
 
+
+@dataclass
+class PathConfig:
+    output_dir: str = RUNS_PATH
+
+
 @dataclass
 class GlobalConfig:
     train: TrainConfig
     datamodule: DatamoduleConfig
     model: dict
+    path: PathConfig = field(default_factory=PathConfig)
 
     def instantiate_model(
         self,

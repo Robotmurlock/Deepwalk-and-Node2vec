@@ -22,7 +22,7 @@ def main(cfg: DictConfig) -> None:
     pl_trainer = cfg.instantiate_trainer(dataset=dataset)
 
     tb_logger = TensorBoardLogger(
-        save_dir='tb_logs',  # TODO
+        save_dir=os.path.join(cfg.path.output_dir, 'tb_logs'),
         name=cfg.train.experiment
     )
 
@@ -34,13 +34,11 @@ def main(cfg: DictConfig) -> None:
         log_every_n_steps=1,
         callbacks=[
             ModelCheckpoint(
-                dirpath=os.path.join(cfg.train.experiment, 'checkpoints'),
+                dirpath=os.path.join(cfg.path.output_dir, 'checkpoints', cfg.train.experiment),
                 filename='checkpoint_{epoch:06d}_{step:09d}',  # Example: checkpoint_epoch=000009_step=000034030.ckpt
                 save_top_k=-1  # `-1` == saves every checkpoint
             )
-        ],
-        # limit_train_batches=0,
-        # num_sanity_val_steps=0
+        ]
     )
 
     trainer.fit(model=pl_trainer, train_dataloaders=dataloader)
