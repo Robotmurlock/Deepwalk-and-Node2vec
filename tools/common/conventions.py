@@ -3,7 +3,8 @@ import os
 # Project conventions
 CHECKPOINT_DIRNAME = 'checkpoints'
 TB_LOGS_DIRNAME = 'tb_logs'
-RUN_HISTORY = 'run_history'
+RUN_HISTORY_DIRNAME = 'run_history'
+ANALYSIS_DIRNAME = 'analysis'
 
 DATE_FORMAT = '%Y-%m-%d'
 TIME_FORMAT = '%H-%M-%S.%f'
@@ -26,9 +27,20 @@ def get_checkpoints_experiment_path(output_dir: str, experiment: str) -> str:
     return os.path.join(get_checkpoints_dirpath(output_dir), experiment)
 
 
+def get_checkpoint_path(output_dir: str, experiment: str, checkpoint: str) -> str:
+    return os.path.join(get_checkpoints_experiment_path(output_dir, experiment), checkpoint)
+
+
 def get_run_history_dirpath(output_dir: str) -> str:
-    return os.path.join(output_dir, RUN_HISTORY)
+    return os.path.join(output_dir, RUN_HISTORY_DIRNAME)
 
 
 def get_run_history_experiment_path(output_dir: str, experiment: str) -> str:
     return os.path.join(get_run_history_dirpath(output_dir), experiment)
+
+
+def get_analysis_dirpath(output_dir: str) -> str:
+    return os.path.join(output_dir, ANALYSIS_DIRNAME)
+
+def get_analysis_experiment_path(output_dir: str, experiment: str) -> str:
+    return os.path.join(output_dir, ANALYSIS_DIRNAME, experiment)

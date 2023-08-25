@@ -1,19 +1,16 @@
+import logging
 import os.path
+import shutil
 
 import hydra
-import torch
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-import logging
-import shutil
 
 from tools.common import conventions
 from tools.common.path import CONFIG_PATH
 from tools.utils import setup_pipeline
-from word2vec.utils.func import pairwise_cosine_similarity
-
 
 logger = logging.getLogger('Trainer')
 
@@ -62,22 +59,13 @@ def main(cfg: DictConfig) -> None:
             ModelCheckpoint(
                 dirpath=conventions.get_checkpoints_experiment_path(cfg.path.output_dir, cfg.train.experiment),
                 filename='checkpoint_{epoch:06d}_{step:09d}',  # Example: checkpoint_epoch=000009_step=000034030.ckpt
-                save_top_k=-1  # `-1` == saves every checkpoint
+                save_top_k=-1,  # `-1` == saves every checkpoint
+                save_last=True
             )
         ]
     )
 
     trainer.fit(model=pl_trainer, train_dataloaders=dataloader)
-
-    print(dataset.vocab.get_stoi())
-    inverse_map = {v: k for k, v in dataset.vocab.get_stoi().items()}
-    input_emb = pl_trainer.model.input_embedding
-    output_emb = pl_trainer.model.output_embedding
-    sim = pairwise_cosine_similarity(input_emb, output_emb)
-    print(sim)
-    closest = torch.argmax(sim, dim=-1)
-    closest = [inverse_map[int(x.item())] for x in closest]
-    print(list(zip([inverse_map[i] for i in range(sim.shape[0])], closest)))
 
 
 

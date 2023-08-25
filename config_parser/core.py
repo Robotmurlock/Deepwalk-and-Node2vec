@@ -129,6 +129,19 @@ class DatamoduleConfig:
 
 
 @dataclass
+class ModelAnalysisConfig:
+    checkpoint: str = 'last.ckpt'
+
+    # Closest pairs
+    closest_pairs: bool = True
+    closest_max_words: int = 100  # In case there are too many words in vocabulary
+    closest_pairs_per_word: int = 5
+
+    # Projected embeddings visualization
+    visualize_embeddings: bool = True
+
+
+@dataclass
 class PathConfig:
     output_dir: str = RUNS_PATH
 
@@ -138,6 +151,7 @@ class GlobalConfig:
     train: TrainConfig
     datamodule: DatamoduleConfig
     model: dict
+    analysis: ModelAnalysisConfig = field(default_factory=ModelAnalysisConfig)
     path: PathConfig = field(default_factory=PathConfig)
 
     def instantiate_model(
@@ -152,19 +166,31 @@ class GlobalConfig:
         model: Optional[nn.Module] = None,
         optimizer: Optional[Optimizer] = None,
         scheduler: Optional[LRScheduler] = None,
-        dataset: Optional[W2VDataset] = None
+        dataset: Optional[W2VDataset] = None,
+        checkpoint_path: Optional[str] = None
     ) -> Word2VecTrainer:
         dataset = self.datamodule.instantiate_dataset() if dataset is None else dataset
         model = self.instantiate_model(dataset=dataset) if model is None else model
         optimizer = self.train.instantiate_optimizer(model.parameters()) if optimizer is None else optimizer
         scheduler = self.train.instantiate_scheduler(optimizer) if scheduler is None else scheduler
-        return Word2VecTrainer(
-            model=model,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            neg_samples=self.train.loss.negative_samples,
-            vocab_size=len(dataset.vocab)
-        )
+        if checkpoint_path is None:
+            return Word2VecTrainer(
+                model=model,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                neg_samples=self.train.loss.negative_samples,
+                vocab_size=len(dataset.vocab)
+            )
+        else:
+
+            return Word2VecTrainer.load_from_checkpoint(
+                checkpoint_path=checkpoint_path,
+                model=model,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                neg_samples=self.train.loss.negative_samples,
+                vocab_size=len(dataset.vocab)
+            )
 
 
 cs = ConfigStore.instance()

@@ -2,11 +2,11 @@ from typing import Union, Dict, List
 
 import pytorch_lightning as pl
 import torch
-from torch import nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
 from word2vec.loss import NegativeSamplingLoss
+from word2vec.model import W2VBase
 from word2vec.utils import torch_helper
 from word2vec.utils.meter import MetricMeter
 from word2vec.utils.sampling import generate_noise_batch
@@ -15,7 +15,7 @@ from word2vec.utils.sampling import generate_noise_batch
 class Word2VecTrainer(pl.LightningModule):
     def __init__(
         self,
-        model: nn.Module,
+        model: W2VBase,
         optimizer: Optimizer,
         scheduler: LRScheduler,
         neg_samples: int,
@@ -33,7 +33,7 @@ class Word2VecTrainer(pl.LightningModule):
         self._meter = MetricMeter()
 
     @property
-    def model(self) -> nn.Module:
+    def model(self) -> W2VBase:
         return self._model
 
     @property
