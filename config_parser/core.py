@@ -12,7 +12,7 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
-from tools.common import RUNS_PATH
+from tools.common.path import RUNS_PATH
 from word2vec.dataloader import W2VDataset, W2VCollateFunctional
 from word2vec.trainer import Word2VecTrainer
 

@@ -4,6 +4,7 @@ Project paths - Paths are absolute and deduced based on the project location on 
 import os
 from pathlib import Path
 
-ROOT_PATH = str(Path(__file__).parent.parent)
+# Project paths
+ROOT_PATH = str(Path(__file__).parent.parent.parent)
 CONFIG_PATH = os.path.join(ROOT_PATH, 'configs')
 RUNS_PATH = os.path.join(ROOT_PATH, 'runs')

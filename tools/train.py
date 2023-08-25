@@ -1,28 +1,54 @@
-import os
+import os.path
 
 import hydra
 import torch
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+import logging
+import shutil
+
+from tools.common import conventions
+from tools.common.path import CONFIG_PATH
+from tools.utils import setup_pipeline
 from word2vec.utils.func import pairwise_cosine_similarity
 
-from config_parser import GlobalConfig, print_config_tree
-from tools.common import CONFIG_PATH
+
+logger = logging.getLogger('Trainer')
 
 
-@hydra.main(config_path=CONFIG_PATH, config_name='w2v_abcde.yaml')
+def check_train_experiment_history(output_dir: str, experiment: str) -> None:
+    exp_tb_logs_dirpath = conventions.get_tb_logs_experiment_path(output_dir, experiment)
+    exp_checkpoints_dirpath = conventions.get_checkpoints_experiment_path(output_dir, experiment)
+    dirpaths = [exp_tb_logs_dirpath, exp_checkpoints_dirpath]
+
+    # Check if there are already some checkpoints or TB logs
+    if any(os.path.exists(dirpath) for dirpath in dirpaths):
+        logger.warning(f'Experiment "{experiment}" already has some history. Do you want to delete it?')
+        response = input(f'Delete "{experiment}" history? [yes/no]   ')
+        if response.lower() == 'yes':
+            for dirpath in dirpaths:
+                if os.path.exists(dirpath):
+                    shutil.rmtree(dirpath)
+
+
+
+@hydra.main(config_path=CONFIG_PATH, config_name='w2v_sg_abcde.yaml')
 def main(cfg: DictConfig) -> None:
-    print_config_tree(cfg)
-    cfg: GlobalConfig = OmegaConf.to_object(cfg)
+    cfg = setup_pipeline(cfg, task='train')
     dataset = cfg.datamodule.instantiate_dataset()
     dataloader = cfg.datamodule.instantiate_dataloader(dataset=dataset)
     # noinspection PyTypeChecker
     pl_trainer = cfg.instantiate_trainer(dataset=dataset)
 
+    check_train_experiment_history(
+        output_dir=cfg.path.output_dir,
+        experiment=cfg.train.experiment
+    )
+
     tb_logger = TensorBoardLogger(
-        save_dir=os.path.join(cfg.path.output_dir, 'tb_logs'),
+        save_dir=conventions.get_tb_logs_dirpath(cfg.path.output_dir),
         name=cfg.train.experiment
     )
 
@@ -34,7 +60,7 @@ def main(cfg: DictConfig) -> None:
         log_every_n_steps=1,
         callbacks=[
             ModelCheckpoint(
-                dirpath=os.path.join(cfg.path.output_dir, 'checkpoints', cfg.train.experiment),
+                dirpath=conventions.get_checkpoints_experiment_path(cfg.path.output_dir, cfg.train.experiment),
                 filename='checkpoint_{epoch:06d}_{step:09d}',  # Example: checkpoint_epoch=000009_step=000034030.ckpt
                 save_top_k=-1  # `-1` == saves every checkpoint
             )
