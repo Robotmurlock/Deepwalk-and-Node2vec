@@ -1,9 +1,10 @@
 import torch
 from torch import nn
+from typing import Optional
 
 
 class W2VBase(nn.Module):
-    def __init__(self, vocab_size: int, embedding_size: int, max_norm: float = 1.0):
+    def __init__(self, vocab_size: int, embedding_size: int, max_norm: Optional[float] = None):
         super().__init__()
         self._input_embedding = nn.Embedding(vocab_size, embedding_size, max_norm=max_norm)
         self._output_embedding = nn.Embedding(vocab_size, embedding_size, max_norm=max_norm)

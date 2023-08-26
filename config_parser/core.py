@@ -145,6 +145,9 @@ class ModelAnalysisConfig:
     visualize_embeddings: bool = True
     visualize_embeddings_max_words: int = 1000
 
+    # Semantics test
+    semantics_test: bool = True
+
 
 @dataclass
 class PathConfig:

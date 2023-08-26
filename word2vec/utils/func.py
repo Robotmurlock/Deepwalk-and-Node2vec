@@ -9,7 +9,7 @@ def pairwise_cosine_similarity(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor
         y: Second vector
 
     Returns:
-        Pairvise similarity
+        Pairwise similarity
     """
     x = x / torch.norm(x, dim=-1).unsqueeze(-1).expand_as(x)
     y = y / torch.norm(y, dim=-1).unsqueeze(-1).expand_as(y)

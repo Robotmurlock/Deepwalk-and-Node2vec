@@ -1,4 +1,4 @@
-experiment: 'SG_exp01_baseline'
+experiment: 'SG_exp04_less_embeddings_no_norm'
 accelerator: 'gpu'  # (cpu, gpu)
 devices: '1'
 

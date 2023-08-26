@@ -1,6 +1,5 @@
 import logging
 import os
-import random
 from pathlib import Path
 
 import hydra
@@ -9,8 +8,8 @@ import torch
 from omegaconf import DictConfig
 from sklearn.manifold import TSNE
 
-from tools import conventions
 from common.path import CONFIG_PATH
+from tools import conventions
 from tools.utils import setup_pipeline
 from word2vec.dataloader import W2VDataset
 from word2vec.model import W2VBase
@@ -39,12 +38,12 @@ def show_closest_pairs_for_each_word(
         sampled_indices = list(range(vocab_size))
 
     # Perform cosine similarity
-    sim = pairwise_cosine_similarity(input_emb, output_emb)
+    sim_matrix = pairwise_cosine_similarity(input_emb, output_emb)
 
     text = [r'Closest pairs in format "{word}:{closest_word_pairs}"']
     for sim_index, word_index in enumerate(sampled_indices):
         word = inverse_map[word_index]
-        closest_pair_indices = torch.argsort(sim[sim_index, :], descending=True)[:pairs_per_word]
+        closest_pair_indices = torch.argsort(sim_matrix[sim_index, :], descending=True)[:pairs_per_word]
         closest_pairs = [inverse_map[int(x.item())] for x in closest_pair_indices]
         closest_pairs_str = ', '.join(closest_pairs)
         text.append(f'{word}: {closest_pairs_str}')
@@ -78,7 +77,7 @@ def visualize_embeddings(
 
     # Assert the embedding dimension is 2 or larger
     n_dims = embeddings.shape[1]
-    assert n_dims >= 2, "Embedding dimension should be 2 or larger."
+    assert n_dims >= 2, 'Embedding dimension should be 2 or larger.'
 
     # Use T-SNE for dimensionality reduction if necessary
     if n_dims > 2:
@@ -93,9 +92,9 @@ def visualize_embeddings(
     for i, word in enumerate(words):
         plt.annotate(word, (embeddings[i, 0], embeddings[i, 1]))
 
-    plt.title("Word Embeddings Visualization")
-    plt.xlabel("Dimension 1")
-    plt.ylabel("Dimension 2")
+    plt.title(f'Word Embeddings Visualization ({max_words} most frequent words)')
+    plt.xlabel('Dimension 1')
+    plt.ylabel('Dimension 2')
     plt.grid(True)
 
     # Save the figure
@@ -104,6 +103,50 @@ def visualize_embeddings(
     plt.close(fig)
 
     logger.info(f'Saved embedding visualization at path "{save_path}".')
+
+
+def semantics_test(
+    model: W2VBase,
+    dataset: W2VDataset
+) -> None:
+    input_emb = model.input_embedding
+    output_emb = model.output_embedding
+
+    token_to_index = dataset.vocab.get_stoi()
+    index_to_token = {v: k for k, v in token_to_index.items()}
+
+    combinations = [
+        (['king', 'man', 'woman'], 'queen'),
+        (['queen', 'woman', 'man'], 'king'),
+        (['king', 'queen', 'woman'], 'man'),
+        (['queen', 'king', 'man'], 'woman'),
+        (['uncle', 'execute', 'kiss'], 'saw')  # rubbish test - expected low score
+    ]
+
+    for combination in combinations:
+        arg_words, end_word = combination
+        if any(word not in dataset.vocab for word in arg_words + [end_word]):
+            logger.warning('Did not find all required words in vocabulary. Skipping....')
+            continue
+
+        start_word, minus_word, plus_word = arg_words
+        start_vector = input_emb[token_to_index[start_word]]
+        minus_vector = input_emb[token_to_index[minus_word]]
+        plus_vector = input_emb[token_to_index[plus_word]]
+        end_vector = input_emb[token_to_index[end_word]]
+
+        pseudo_end_vector = start_vector - minus_vector + plus_vector
+        cosine_sim = float(torch.nn.functional.cosine_similarity(pseudo_end_vector.unsqueeze(0), end_vector.unsqueeze(0)).item())
+        logger.info(f'Similarity between vector("{start_word}") - vector("{minus_word}") + vector("{plus_word}") '
+                    f'and vector("{end_word}") is {cosine_sim:.2f}')
+
+        pseudo_end_vector = pseudo_end_vector.unsqueeze(0)
+        sim_matrix = pairwise_cosine_similarity(pseudo_end_vector, output_emb)
+        closest_pair_indices = torch.argsort(sim_matrix[0, :], descending=True)[:5]
+        closest_pairs = [index_to_token[int(x.item())] for x in closest_pair_indices]
+        closest_pairs_str = ', '.join(closest_pairs)
+
+        logger.info(f'Closest pairs to pseudo "{end_word}" vector is: {closest_pairs_str}')
 
 
 @hydra.main(config_path=CONFIG_PATH, config_name='w2v_sg_abcde.yaml')
@@ -135,6 +178,13 @@ def main(cfg: DictConfig) -> None:
             dataset=dataset,
             output_path=analysis_exp_path,
             max_words=cfg.analysis.visualize_embeddings_max_words
+        )
+
+    if cfg.analysis.semantics_test:
+        logger.info('Performing simple semantic test... This test is specialized for Shakespeare and might not work for other datasets.')
+        semantics_test(
+            model=pl_trainer.model,
+            dataset=dataset,
         )
 
 
