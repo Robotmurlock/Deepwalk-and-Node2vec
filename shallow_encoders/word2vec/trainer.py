@@ -1,3 +1,6 @@
+"""
+Wrapper for W2V models for training purposes.
+"""
 from typing import Union, Dict, List
 
 import pytorch_lightning as pl
@@ -5,14 +8,17 @@ import torch
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
-from word2vec.loss import NegativeSamplingLoss
-from word2vec.model import W2VBase
-from word2vec.utils import torch_helper
-from word2vec.utils.meter import MetricMeter
-from word2vec.utils.sampling import generate_noise_batch
+from shallow_encoders.word2vec.loss import NegativeSamplingLoss
+from shallow_encoders.word2vec.model import W2VBase
+from shallow_encoders.word2vec.utils import torch_helper
+from shallow_encoders.word2vec.utils.meter import MetricMeter
+from shallow_encoders.word2vec.utils.sampling import generate_noise_batch
 
 
 class Word2VecTrainer(pl.LightningModule):
+    """
+    Trains a W2v model.
+    """
     def __init__(
         self,
         model: W2VBase,
@@ -21,6 +27,14 @@ class Word2VecTrainer(pl.LightningModule):
         neg_samples: int,
         vocab_size: int
     ):
+        """
+        Args:
+            model: W2V model
+            optimizer: Torch optimizer
+            scheduler: Torch optimizer learning rate scheduler
+            neg_samples: Number of negative samples to generate (noise samples)
+            vocab_size: Dataset vocabulary size
+        """
         super().__init__()
         self._optimizer = optimizer
         self._scheduler = scheduler
@@ -34,22 +48,52 @@ class Word2VecTrainer(pl.LightningModule):
 
     @property
     def model(self) -> W2VBase:
+        """
+        Fetches model (core).
+
+        Returns:
+            Model (core)
+        """
         return self._model
 
     @property
     def optimizer(self) -> Optimizer:
+        """
+        Optimizer getter.
+
+        Returns:
+            Optimizer
+        """
         return self._optimizer
 
     @optimizer.setter
     def optimizer(self, optimizer: Optimizer) -> None:
+        """
+        Optimizer setter.
+
+        Args:
+            optimizer: New optimizer
+        """
         self._optimizer = optimizer
 
     @property
     def scheduler(self) -> Union[LRScheduler, dict]:
+        """
+        Scheduler getter.
+
+        Returns:
+            Scheduler
+        """
         return self._scheduler
 
     @scheduler.setter
     def scheduler(self, scheduler: Union[LRScheduler, dict]) -> None:
+        """
+        Scheduler setter.
+
+        Args:
+            scheduler: New scheduler
+        """
         self._scheduler = scheduler
 
     def _log_loss(self, loss: Union[torch.Tensor, Dict[str, torch.Tensor]], prefix: str, log_step: bool = True) -> None:

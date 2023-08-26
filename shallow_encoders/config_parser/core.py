@@ -1,7 +1,10 @@
+"""
+ConfigParser for
+"""
 import copy
+from dataclasses import field
 from typing import Iterator
 from typing import Union, Optional
-from dataclasses import field
 
 from hydra.core.config_store import ConfigStore
 from hydra.utils import instantiate
@@ -12,9 +15,10 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
-from common.path import RUNS_PATH
-from word2vec.dataloader import W2VDataset, W2VCollateFunctional
-from word2vec.trainer import Word2VecTrainer
+from shallow_encoders.common.path import RUNS_PATH
+from shallow_encoders.word2vec.dataloader.torch import W2VDataset, W2VCollateFunctional
+from shallow_encoders.word2vec.model import W2VBase
+from shallow_encoders.word2vec.trainer import Word2VecTrainer
 
 
 @dataclass
@@ -101,6 +105,12 @@ class DatamoduleConfig:
     lemmatize: bool = False
 
     def instantiate_dataset(self) -> W2VDataset:
+        """
+        Instantiates dateset from config.
+
+        Returns:
+            Dataset for training.
+        """
         return W2VDataset(
             dataset_name=self.dataset_name,
             split='train',
@@ -110,6 +120,13 @@ class DatamoduleConfig:
         )
 
     def instantiate_collate_fn(self) -> W2VCollateFunctional:
+        """
+        Instantiates batch collate function for dataloader.
+        This function is mostly implicitly used through `instantiate_dataloader`.
+
+        Returns:
+            Collate function.
+        """
         return W2VCollateFunctional(
             mode=self.mode,
             context_radius=self.context_radius,
@@ -120,6 +137,15 @@ class DatamoduleConfig:
         self,
         dataset: Optional[W2VDataset] = None
     ) -> DataLoader:
+        """
+        Instantiates training dataloader.
+
+        Args:
+            dataset: Dataset
+
+        Returns:
+            Dataloader
+        """
         dataset = self.instantiate_dataset() if dataset is None else dataset
         collage_fn = self.instantiate_collate_fn()
 
@@ -165,18 +191,42 @@ class GlobalConfig:
     def instantiate_model(
         self,
         dataset: Optional[W2VDataset] = None
-    ) -> nn.Module:
+    ) -> W2VBase:
+        """
+        Instantiates model (`W2VBase`).
+
+        Args:
+            dataset: Dataset (required for vocabulary size)
+                - Model is dataset specific
+
+        Returns:
+            Model
+        """
         dataset = self.datamodule.instantiate_dataset() if dataset is None else dataset
         return instantiate(OmegaConf.create(self.model), vocab_size=len(dataset.vocab))
 
     def instantiate_trainer(
         self,
-        model: Optional[nn.Module] = None,
+        model: Optional[W2VBase] = None,
         optimizer: Optional[Optimizer] = None,
         scheduler: Optional[LRScheduler] = None,
         dataset: Optional[W2VDataset] = None,
         checkpoint_path: Optional[str] = None
     ) -> Word2VecTrainer:
+        """
+        Instantiates trainer (PytorchLighting module).
+
+        Args:
+            model: Model
+            optimizer: Optimizer
+            scheduler: Scheduler
+            dataset: Dataset
+            checkpoint_path: Loads model from checkpoint if defined
+                otherwise creates new model
+
+        Returns:
+            PL module (trainer)
+        """
         dataset = self.datamodule.instantiate_dataset() if dataset is None else dataset
         model = self.instantiate_model(dataset=dataset) if model is None else model
         optimizer = self.train.instantiate_optimizer(model.parameters()) if optimizer is None else optimizer
@@ -201,5 +251,8 @@ class GlobalConfig:
             )
 
 
+# Configuring hydra config store
+# If config has `- w2v_config` in defaults then
+# full config is recursively instantiated
 cs = ConfigStore.instance()
 cs.store(name='w2v_config', node=GlobalConfig)

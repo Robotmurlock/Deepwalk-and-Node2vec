@@ -1,4 +1,6 @@
-from pathlib import Path
+"""
+Utility for pretty printing config in terminal.
+"""
 from typing import Sequence
 
 import rich
@@ -18,7 +20,11 @@ def print_config_tree(
     ),
     resolve: bool = False
 ) -> None:
-    """Prints content of DictConfig using Rich library and its tree structure.
+    """
+    copied from: https://github.com/ashleve/lightning-hydra-template
+
+    Prints content of DictConfig using Rich library and its tree structure.
+
     Args:
         cfg (DictConfig): Configuration composed by Hydra.
         print_order (Sequence[str], optional): Determines in what order config components are printed.

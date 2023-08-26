@@ -19,5 +19,12 @@ def get_optim_lr(optimizer: Optimizer) -> float:
 
 
 def set_optim_lr(optimizer: Optimizer, lr: float) -> None:
+    """
+    Manually sets optimizer learning rate.
+
+    Args:
+        optimizer: Torch optimizer
+        lr: New learning rate value
+    """
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr

@@ -1,3 +1,14 @@
+"""
+Performs model analysis on the trained model.
+Should be run after `tools/train.py`.
+
+Supports:
+- Finding closest words (vectors)
+- Visualization (2D with T-SNE)
+- Word2Vec semantics test (specialized for shakespeare dataset)
+
+All these components can be turned on/off in configs.
+"""
 import logging
 import os
 from pathlib import Path
@@ -8,12 +19,12 @@ import torch
 from omegaconf import DictConfig
 from sklearn.manifold import TSNE
 
-from common.path import CONFIG_PATH
+from shallow_encoders.common.path import CONFIG_PATH
+from shallow_encoders.word2vec.dataloader.torch import W2VDataset
+from shallow_encoders.word2vec.model import W2VBase
+from shallow_encoders.word2vec.utils.func import pairwise_cosine_similarity
 from tools import conventions
 from tools.utils import setup_pipeline
-from word2vec.dataloader import W2VDataset
-from word2vec.model import W2VBase
-from word2vec.utils.func import pairwise_cosine_similarity
 
 logger = logging.getLogger('ModelAnalysis')
 
@@ -25,6 +36,18 @@ def show_closest_pairs_for_each_word(
     max_words: int = 100,
     pairs_per_word: int = 5
 ) -> None:
+    """
+    Fetches `max_words` frequent words (or all) and for each of those words
+    performs search of `pairs_per_word` the closest words by cosine similarity.
+    Saves output in `output_path` directory.
+
+    Args:
+        model: Trained model
+        dataset: Dataset
+        output_path: Result directory path
+        max_words: Maximum number of words to use (filtering by frequency)
+        pairs_per_word: Number of closest words be word query
+    """
     input_emb = model.input_embedding
     output_emb = model.output_embedding
     inverse_map = {v: k for k, v in dataset.vocab.get_stoi().items()}
@@ -62,7 +85,17 @@ def visualize_embeddings(
     dataset: W2VDataset,
     output_path: str,
     max_words: int
-):
+) -> None:
+    """
+    Visualizes model input embeddings. Assumes that embedding dimensionality is at least 2.
+    if embedding dimensionality is greater than 2 then T-SNE is used for dimensionality reduction.
+
+    Args:
+        model: Trained model
+        dataset: Dataset
+        output_path: Result directory path
+        max_words: Maximum number of words to use (filtering by frequency)
+    """
     embeddings = model.input_embedding.numpy()
     words = dataset.vocab.get_itos()
 
@@ -109,6 +142,15 @@ def semantics_test(
     model: W2VBase,
     dataset: W2VDataset
 ) -> None:
+    """
+    Performs simple semantic calculations (inspired by W2V paper).
+    Please note that this function is specialized for Shakespeare dataset
+    and might not work for other datasets.
+
+    Args:
+        model: Trained model
+        dataset: Dataset
+    """
     input_emb = model.input_embedding
     output_emb = model.output_embedding
 

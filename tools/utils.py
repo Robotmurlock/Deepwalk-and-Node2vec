@@ -1,15 +1,30 @@
+"""
+Tools utility set.
+"""
 import os
 from datetime import datetime
 from pathlib import Path
 
 from omegaconf import DictConfig, OmegaConf
 
-from config_parser import GlobalConfig, print_config_tree
+from shallow_encoders.common.path import RUNS_PATH
+from shallow_encoders.config_parser import GlobalConfig, print_config_tree
 from tools.conventions import get_run_history_experiment_path, DATETIME_FORMAT
-from common.path import RUNS_PATH
 
 
 def setup_pipeline(cfg: DictConfig, task: str) -> GlobalConfig:
+    """
+    - Performs fancy rich tree config print.
+    - Saves run history in output directory.
+    - Instantiates config.
+
+    Args:
+        cfg: Config
+        task: Task name
+
+    Returns:
+        Instantiated config.
+    """
     print_config_tree(cfg)
 
     # Save to run history

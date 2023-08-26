@@ -1,3 +1,6 @@
+"""
+Sampling support (negative sampling)
+"""
 import torch
 
 

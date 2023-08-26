@@ -1,6 +1,10 @@
+"""
+Training metric meter.
+"""
 from collections import defaultdict
-import torch
 from typing import Union, Iterable, Tuple
+
+import torch
 
 
 class UnknownMetricException(KeyError):

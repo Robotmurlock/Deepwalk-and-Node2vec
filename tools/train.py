@@ -1,3 +1,6 @@
+"""
+Trains Word2Vec type model (SG/CBOW).
+"""
 import logging
 import os.path
 import shutil
@@ -8,14 +11,23 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
+from shallow_encoders.common.path import CONFIG_PATH
 from tools import conventions
-from common.path import CONFIG_PATH
 from tools.utils import setup_pipeline
 
 logger = logging.getLogger('Trainer')
 
 
 def check_train_experiment_history(output_dir: str, dataset_name: str, experiment: str) -> None:
+    """
+    Checks if trained model already exists. If it already exists then user is asked if he wants to override
+    old model (delete old model).
+
+    Args:
+        output_dir: Output path
+        dataset_name: Dataset name
+        experiment: Experiment name
+    """
     exp_tb_logs_dirpath = conventions.get_tb_logs_experiment_path(output_dir, dataset_name, experiment)
     exp_checkpoints_dirpath = conventions.get_checkpoints_experiment_path(output_dir, dataset_name, experiment)
     dirpaths = [exp_tb_logs_dirpath, exp_checkpoints_dirpath]

@@ -1,9 +1,0 @@
-dataset_name: 'shakespeare'
-mode: 'sg'
-context_radius: 5
-max_length: 128
-min_word_frequency: 10
-lemmatize: true
-
-batch_size: 32
-num_workers: 8

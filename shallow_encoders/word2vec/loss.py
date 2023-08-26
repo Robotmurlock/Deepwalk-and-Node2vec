@@ -1,10 +1,21 @@
-from torch import nn
-import torch
+"""
+Implementation of Word2vec losses.
+"""
 from typing import Dict
+
+import torch
+from torch import nn
 
 
 class NegativeSamplingLoss(nn.Module):
+    """
+    Implementation of negative sampling loss.
+    """
     def __init__(self, proba_input: bool = False):
+        """
+        Args:
+            proba_input: Is sigmoid already applied to input logits
+        """
         super().__init__()
         self._bce = nn.BCELoss(reduction='none') if proba_input else nn.BCEWithLogitsLoss(reduction='none')
 
