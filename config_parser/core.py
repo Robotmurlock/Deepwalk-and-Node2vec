@@ -12,7 +12,7 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
-from tools.common.path import RUNS_PATH
+from common.path import RUNS_PATH
 from word2vec.dataloader import W2VDataset, W2VCollateFunctional
 from word2vec.trainer import Word2VecTrainer
 
@@ -97,12 +97,16 @@ class DatamoduleConfig:
     batch_size: int
     num_workers: int
 
+    # Additional dataset config
+    lemmatize: bool = False
+
     def instantiate_dataset(self) -> W2VDataset:
         return W2VDataset(
             dataset_name=self.dataset_name,
             split='train',
             context_radius=self.context_radius,
-            min_word_frequency=self.min_word_frequency
+            min_word_frequency=self.min_word_frequency,
+            lemmatize=self.lemmatize
         )
 
     def instantiate_collate_fn(self) -> W2VCollateFunctional:
@@ -139,6 +143,7 @@ class ModelAnalysisConfig:
 
     # Projected embeddings visualization
     visualize_embeddings: bool = True
+    visualize_embeddings_max_words: int = 1000
 
 
 @dataclass

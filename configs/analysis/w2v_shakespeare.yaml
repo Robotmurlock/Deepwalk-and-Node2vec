@@ -1,0 +1,8 @@
+checkpoint: 'last.ckpt'
+
+closest_pairs: true
+closest_max_words: 500
+closest_pairs_per_word: 5
+
+visualize_embeddings: true
+visualize_embeddings_max_words: 250

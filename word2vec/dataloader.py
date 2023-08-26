@@ -1,27 +1,32 @@
 """
 Word2Vec simple dataloader implementation.
 """
+import logging
+import os
 import re
 from typing import List, Tuple
 
+import pandas as pd
 import torch
+from nltk.stem import WordNetLemmatizer
 from torch.utils.data import Dataset
-from torchtext.datasets import WikiText2, WikiText103
 from torchtext.vocab import build_vocab_from_iterator
+from tqdm import tqdm
+from collections import Counter
+
+from common.path import ASSETS_PATH
+
+logger = logging.getLogger('W2VDataset')
 
 
-class TestDataset:
-    """
-    Test dataset used to test dataloader.
-    """
-    def __init__(self, root: str, split: str):
-        _, _ = root, split  # Ignored
-        self._sentences = ['a, a, c, b, b', 'hello world! hello world!', 'test here, test there, here there', '.']
+class InMemoryIterator:
+    def __init__(self, sentences: List[str]):
+        self._sentences = sentences
 
         # State
         self._index = 0
 
-    def __iter__(self) -> 'TestDataset':
+    def __iter__(self) -> 'InMemoryIterator':
         self._index = 0
         return self
 
@@ -34,48 +39,102 @@ class TestDataset:
         return sentence
 
 
-class ABCDEDataset:
+class FileIterator:
+    def __init__(self, path: str):
+        self._path = path
+        self._reader = None
+
+    def __iter__(self) -> 'FileIterator':
+        self._reader = open(self._path, 'r', encoding='utf-8')
+        return self
+
+    def __next__(self):
+        assert self._reader is not None, 'Invalid Program State!'
+        sentence = self._reader.readline()
+        if not sentence:
+            self._reader.close()
+            self._reader = None
+            raise StopIteration('Finished.')
+
+        return sentence
+
+
+
+class TestDataset(InMemoryIterator):
+    """
+    Test dataset used to test dataloader.
+    """
+    def __init__(self, split: str):
+        _ = split
+        super().__init__(sentences=['a, a, c, b, b', 'hello world! hello world!', 'test here, test there, here there', '.'])
+
+
+
+class ABCDEDataset(InMemoryIterator):
     """
     Simple dataset used to test model capability. Model should be able to learn:
     - `a` and `b` go together in a sentence
     - `c` and `d` go together in a sentence
     - `e` goes alone in a sentence
     """
-    def __init__(self, root: str, split: str):
-        _, _ = root, split  # Ignored
-        self._sentences = [
-            'a b a b a b a b a b',  # `a` goes with `b`
-            'a b a b a b',
-            'b a b a',
-            'a b a b a b a b',
-            'c d c d c d c d',  # `c` goes with `d`
-            'd c d c d c',
-            'c d c d c d',
-            'e e e e e e e e',  # `e` goes alone
-            'e e e'
-        ]
+    def __init__(self, split: str):
+        _ = split  # Ignored
+        super().__init__(
+            sentences=[
+                'a b a b a b a b a b',  # `a` goes with `b`
+                'a b a b a b',
+                'b a b a',
+                'a b a b a b a b',
+                'c d c d c d c d',  # `c` goes with `d`
+                'd c d c d c',
+                'c d c d c d',
+                'e e e e e e e e',  # `e` goes alone
+                'e e e'
+            ]
+        )
 
-        # State
-        self._index = 0
 
-    def __iter__(self) -> 'ABCDEDataset':
-        self._index = 0
-        return self
+class WikiText(FileIterator):
+    def __init__(self, dataset_name: str, split: str, assets_path: str = ASSETS_PATH):
+        path = os.path.join(assets_path, dataset_name, f'wiki.{split}.tokens')
+        super().__init__(path=path)
 
-    def __next__(self):
-        if self._index >= len(self._sentences):
-            raise StopIteration('Finished.')
 
-        sentence = self._sentences[self._index]
-        self._index += 1
-        return sentence
+class WikiText2(WikiText):
+    def __init__(self, split: str, *args, **kwargs):
+        super().__init__(
+            dataset_name='wikitext-2',
+            split=split,
+            *args,
+            **kwargs
+        )
+
+
+class WikiText103(WikiText):
+    def __init__(self, split: str, *args, **kwargs):
+        super().__init__(
+            dataset_name='wikitext-103',
+            split=split,
+            *args,
+            **kwargs
+        )
+
+
+class Shakespeare(InMemoryIterator):
+    def __init__(self, split: str, assets_path: str = ASSETS_PATH):
+        _ = split
+        df = pd.read_csv(os.path.join(assets_path, 'Shakespeare_data.csv'))
+        lines = df['PlayerLine'].values.tolist()
+        super().__init__(sentences=lines)
+
 
 
 SUPPORTED_DATASETS = {
     'wiki-text-2': WikiText2,
-    'wiki-test-103': WikiText103,
+    'wiki-text-103': WikiText103,
     'test': TestDataset,
-    'abcde': ABCDEDataset
+    'abcde': ABCDEDataset,
+    'shakespeare': Shakespeare
 }
 
 
@@ -98,13 +157,41 @@ def tokenize(text: str) -> List[str]:
     return pattern.findall(text.lower())
 
 
+def lemmatize_sentence(text: str) -> str:
+    """
+    Lemmatizes words in text. Examples:
+        playing -> play
+        played -> play
+        swimming -> swim
+        stronger -> strong
+
+    :param text: Text.
+    :return: Text with lemmatized words.
+    """
+    text = text.lower()
+
+    lemmatizer = WordNetLemmatizer()
+    ws = text.split(' ')
+    for tag in ['a', 'r', 'n', 'v']:
+        ws = list(map(lambda w: lemmatizer.lemmatize(w, tag), ws))
+    return ' '.join(ws)
+
+
 class W2VDataset(Dataset):
     """
     Adapter for Pytorch dataloader.
 
     Note: Loads dataset into a RAM.
     """
-    def __init__(self, dataset_name: str, split: str, context_radius: int = 5, min_word_frequency: int = 20):
+    def __init__(
+        self,
+        dataset_name: str,
+        split: str,
+        context_radius: int = 5,
+        min_word_frequency: int = 20,
+        lemmatize: bool = False,
+        *args, **kwargs
+    ):
         """
         Args:
             dataset_name: Dataset name
@@ -112,17 +199,43 @@ class W2VDataset(Dataset):
             context_radius: CBOW and SG context radius (number of words before and after)
             min_word_frequency: Minimum number of word occurrences to add it into the vocabulary
         """
-        assert dataset_name in SUPPORTED_DATASETS, f'Dataset "{dataset_name}" is not supported. Supported: {SUPPORTED_DATASETS}'
+        assert dataset_name in SUPPORTED_DATASETS, \
+            f'Dataset "{dataset_name}" is not supported. Supported: {list(SUPPORTED_DATASETS.keys())}'
 
-        self._dataset = SUPPORTED_DATASETS[dataset_name](root=f'/tmp/{dataset_name}', split=split)
-        tokenslist = [tokenize(sentence) for sentence in self._dataset]
+        self._dataset = SUPPORTED_DATASETS[dataset_name](split=split, *args, **kwargs)
+        sentences = [s for s in self._dataset]  # TODO: Everything is currently loaded in memory for Torch dataset
+        logger.info(f'Number of loaded sentences is {len(sentences)}.')
+
+        if lemmatize:
+            sentences = [lemmatize_sentence(s) for s in tqdm(sentences, desc='lemmatization', unit='sentence')]
+
+        tokenslist = [tokenize(s) for s in tqdm(sentences, desc='tokenization', unit='sentence')]
         self._tokenslist = [tl for tl in tokenslist if 2 * context_radius + 1 <= len(tl)]
+        logger.info(f'Number of loaded sentences is {len(self._tokenslist)}.')
         self._vocab = build_vocab_from_iterator(
             iterator=tokenslist,
             specials=['<unk>'],
             min_freq=min_word_frequency
         )
+        logger.info(f'Vocabulary size: {len(self._vocab)}')
         self._vocab.set_default_index(self._vocab['<unk>'])
+
+        # Get words frequency
+        self._word_frequency = Counter()
+        for tl in tokenslist:
+            for word in tl:
+                if word not in self._vocab:
+                    continue
+                self._word_frequency[word] += 1
+        self._word_frequency = dict(self._word_frequency)
+
+    def get_n_most_frequent_words(self, n: int) -> Tuple[List[str], List[int]]:
+        wfs = list(self._word_frequency.items())
+        wfs = sorted(wfs, key=lambda x: x[1], reverse=True)
+        wfs = wfs[:n]
+        words = [w for w, _ in wfs]
+        indices = [self._vocab[w] for w in words]
+        return words, indices
 
     @property
     def vocab(self):

@@ -1,0 +1,6 @@
+defaults:
+  - w2v_config
+  - model: w2v_shakespeare/sg.yaml
+  - datamodule: w2v_shakespeare.yaml
+  - train: w2v_shakespeare/sg.yaml
+  - analysis: w2v_shakespeare.yaml

@@ -1,0 +1,3 @@
+_target_: word2vec.model.SkipGram
+embedding_size: 24
+max_norm: 1.0

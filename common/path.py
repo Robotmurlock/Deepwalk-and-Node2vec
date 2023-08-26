@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 # Project paths
-ROOT_PATH = str(Path(__file__).parent.parent.parent)
+ROOT_PATH = str(Path(__file__).parent.parent)
 CONFIG_PATH = os.path.join(ROOT_PATH, 'configs')
 RUNS_PATH = os.path.join(ROOT_PATH, 'runs')
+ASSETS_PATH = os.path.join(ROOT_PATH, 'assets')

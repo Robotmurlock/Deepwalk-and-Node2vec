@@ -1,0 +1,6 @@
+defaults:
+  - w2v_config
+  - model: w2v_wiki_text_103/sg.yaml
+  - datamodule: w2v_wiki_text_103.yaml
+  - train: w2v_wiki_text_103/sg.yaml
+  - analysis: w2v_wiki_text_103.yaml

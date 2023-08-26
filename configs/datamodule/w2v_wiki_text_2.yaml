@@ -1,0 +1,8 @@
+dataset_name: 'wiki-text-2'
+mode: 'sg'
+context_radius: 5
+max_length: 256
+min_word_frequency: 10
+
+batch_size: 32
+num_workers: 8

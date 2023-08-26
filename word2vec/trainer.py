@@ -70,19 +70,20 @@ class Word2VecTrainer(pl.LightningModule):
             for name, value in loss.items():
                 value = value.detach().cpu()
                 assert not torch.isnan(value).any(), f'Got nan value for key "{name}"!'
-                self._meter.push(f'{prefix}/epoch-{name}', value)
+                self._meter.push(f'{prefix}-epoch/{name}', value)
                 if log_step:
                     self.log(f'{prefix}/{name}', value, prog_bar=False)
         else:
             assert not torch.isnan(loss).any(), f'Got nan value!'
             loss = loss.detach().cpu()
-            self._meter.push(f'{prefix}/epoch-loss', loss)
+            self._meter.push(f'{prefix}-epoch/loss', loss)
             if log_step:
                 self.log(f'{prefix}/loss', loss, prog_bar=False)
 
     def forward(self, inputs: torch.Tensor, outputs: torch.Tensor, proba: bool = True) -> torch.Tensor:
         return self._model(inputs, outputs, proba=proba)
 
+    # noinspection PyUnresolvedReferences
     def training_step(self, batch: List[torch.Tensor], *args, **kwargs) -> torch.Tensor:
         inputs, outputs = batch
         noise = generate_noise_batch(inputs.shape[0], self._neg_samples, self._vocab_size).to(inputs)
@@ -94,9 +95,17 @@ class Word2VecTrainer(pl.LightningModule):
         self._log_loss(loss, prefix='train', log_step=True)
         self.log('epoch/lr', torch_helper.get_optim_lr(self.optimizer))
 
+        # Log metrics
+        positive_probas = torch.sigmoid(positive_logits)
+        recall = (positive_probas >= 0.5).float().mean()
+        self._meter.push('train-metrics/recall', recall)
+        negative_probas = torch.sigmoid(negative_logits)
+        precision = 1 - (negative_probas >= 0.5).float().mean()
+        self._meter.push('train-metrics/precision', precision)
+
         return loss
 
-    def on_training_epoch_end(self) -> None:
+    def on_train_epoch_end(self) -> None:
         if self._meter.is_empty:
             return
 

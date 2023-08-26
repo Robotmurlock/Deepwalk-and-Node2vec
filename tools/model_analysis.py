@@ -1,20 +1,20 @@
 import logging
+import os
 import random
 from pathlib import Path
-import os
 
 import hydra
+import matplotlib.pyplot as plt
 import torch
 from omegaconf import DictConfig
+from sklearn.manifold import TSNE
 
-from tools.common import conventions
-from tools.common.path import CONFIG_PATH
+from tools import conventions
+from common.path import CONFIG_PATH
 from tools.utils import setup_pipeline
 from word2vec.dataloader import W2VDataset
 from word2vec.model import W2VBase
 from word2vec.utils.func import pairwise_cosine_similarity
-import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
 
 logger = logging.getLogger('ModelAnalysis')
 
@@ -33,7 +33,7 @@ def show_closest_pairs_for_each_word(
     # Sample words for presentation
     vocab_size = len(dataset.vocab)
     if vocab_size > max_words:
-        sampled_indices = random.sample(range(vocab_size), max_words)
+        _, sampled_indices = dataset.get_n_most_frequent_words(max_words)
         input_emb = input_emb[sampled_indices]
     else:
         sampled_indices = list(range(vocab_size))
@@ -52,16 +52,29 @@ def show_closest_pairs_for_each_word(
     text = '\n'.join(text)
     logger.info(text)
 
-    with open(os.path.join(output_path, 'closest_pairs.txt'), 'w', encoding='utf-8') as f:
+    result_path = os.path.join(output_path, 'closest_pairs.txt')
+    with open(result_path, 'w', encoding='utf-8') as f:
         f.write(text)
+
+    logger.info(f'Saved closest pairs analysis result at path "{result_path}".')
 
 def visualize_embeddings(
     model: W2VBase,
     dataset: W2VDataset,
     output_path: str,
+    max_words: int
 ):
     embeddings = model.input_embedding.numpy()
     words = dataset.vocab.get_itos()
+
+    # Sample words for presentation
+    vocab_size = len(dataset.vocab)
+    if vocab_size > max_words:
+        _, sampled_indices = dataset.get_n_most_frequent_words(max_words)
+        embeddings = embeddings[sampled_indices]
+    else:
+        sampled_indices = list(range(vocab_size))
+    words = [words[i] for i in sampled_indices]
 
     # Assert the embedding dimension is 2 or larger
     n_dims = embeddings.shape[1]
@@ -90,15 +103,19 @@ def visualize_embeddings(
     fig.savefig(save_path)
     plt.close(fig)
 
+    logger.info(f'Saved embedding visualization at path "{save_path}".')
+
 
 @hydra.main(config_path=CONFIG_PATH, config_name='w2v_sg_abcde.yaml')
 def main(cfg: DictConfig) -> None:
     cfg = setup_pipeline(cfg, task='analysis')
     dataset = cfg.datamodule.instantiate_dataset()
-    checkpoint_path = conventions.get_checkpoint_path(cfg.path.output_dir, cfg.train.experiment, cfg.analysis.checkpoint)
+    checkpoint_path = conventions.get_checkpoint_path(cfg.path.output_dir, cfg.datamodule.dataset_name,
+                                                      cfg.train.experiment, cfg.analysis.checkpoint)
     pl_trainer = cfg.instantiate_trainer(dataset=dataset, checkpoint_path=checkpoint_path)
 
-    analysis_exp_path = conventions.get_analysis_experiment_path(cfg.path.output_dir, cfg.train.experiment)
+    analysis_exp_path = \
+        conventions.get_analysis_experiment_path(cfg.path.output_dir, cfg.datamodule.dataset_name, cfg.train.experiment)
     Path(analysis_exp_path).mkdir(parents=True, exist_ok=True)
 
     if cfg.analysis.closest_pairs:
@@ -116,7 +133,8 @@ def main(cfg: DictConfig) -> None:
         visualize_embeddings(
             model=pl_trainer.model,
             dataset=dataset,
-            output_path=analysis_exp_path
+            output_path=analysis_exp_path,
+            max_words=cfg.analysis.visualize_embeddings_max_words
         )
 
 

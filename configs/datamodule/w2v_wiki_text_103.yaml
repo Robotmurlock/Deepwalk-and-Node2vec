@@ -1,0 +1,9 @@
+dataset_name: 'wiki-text-103'
+mode: 'sg'
+context_radius: 5
+max_length: 128
+min_word_frequency: 25
+lemmatize: true
+
+batch_size: 16
+num_workers: 8
