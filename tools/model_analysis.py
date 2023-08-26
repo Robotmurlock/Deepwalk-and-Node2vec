@@ -20,7 +20,7 @@ from omegaconf import DictConfig
 from sklearn.manifold import TSNE
 
 from shallow_encoders.common.path import CONFIG_PATH
-from shallow_encoders.word2vec.dataloader.torch import W2VDataset
+from shallow_encoders.word2vec.dataloader.torch_dataset import W2VDataset
 from shallow_encoders.word2vec.model import W2VBase
 from shallow_encoders.word2vec.utils.func import pairwise_cosine_similarity
 from tools import conventions

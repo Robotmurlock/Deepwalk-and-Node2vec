@@ -7,8 +7,9 @@ import pandas as pd
 
 from shallow_encoders.common.path import ASSETS_PATH
 from shallow_encoders.word2vec.dataloader.iterators import InMemoryIterator, FileIterator
+from shallow_encoders.word2vec.dataloader.registry import register_dataset
 
-
+@register_dataset('test')
 class TestDataset(InMemoryIterator):
     """
     Test dataset used to test dataloader.
@@ -23,6 +24,7 @@ class TestDataset(InMemoryIterator):
         )
 
 
+@register_dataset('abcde')
 class ABCDEDataset(InMemoryIterator):
     """
     Simple dataset used to test model capability. Model should be able to learn:
@@ -62,6 +64,7 @@ class WikiTextDataset(FileIterator):
         super().__init__(path=path)
 
 
+@register_dataset('wiki-text-2')
 class WikiText2Dataset(WikiTextDataset):
     """
     Concrete Wiki dataset - `wikitext-2`
@@ -75,6 +78,7 @@ class WikiText2Dataset(WikiTextDataset):
         )
 
 
+@register_dataset('wiki-text-103')
 class WikiText103Dataset(WikiTextDataset):
     """
     Concrete Wiki dataset - `wikitext-103`
@@ -88,6 +92,7 @@ class WikiText103Dataset(WikiTextDataset):
         )
 
 
+@register_dataset('shakespeare')
 class ShakespeareDataset(InMemoryIterator):
     """
     Parses Shakespeare dataset and loads all sentences in memory iterator.

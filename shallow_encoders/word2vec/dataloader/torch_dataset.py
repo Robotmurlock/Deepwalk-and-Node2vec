@@ -12,23 +12,11 @@ from torch.utils.data import Dataset
 from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
 
-from shallow_encoders.word2vec.dataloader.w2v_datasets import (
-    WikiText2Dataset,
-    WikiText103Dataset,
-    TestDataset,
-    ABCDEDataset,
-    ShakespeareDataset
-)
+from shallow_encoders.word2vec.dataloader.registry import DATASET_REGISTRY
+from shallow_encoders.word2vec.dataloader.w2v_datasets import TestDataset  # This import important for the registry
 
 logger = logging.getLogger('W2VDataset')
 
-SUPPORTED_DATASETS = {
-    'wiki-text-2': WikiText2Dataset,
-    'wiki-text-103': WikiText103Dataset,
-    'test': TestDataset,
-    'abcde': ABCDEDataset,
-    'shakespeare': ShakespeareDataset
-}
 
 def tokenize(text: str) -> List[str]:
     """
@@ -90,11 +78,11 @@ class W2VDataset(Dataset):
             context_radius: CBOW and SG context radius (number of words before and after)
             min_word_frequency: Minimum number of word occurrences to add it into the vocabulary
         """
-        assert dataset_name in SUPPORTED_DATASETS, \
-            f'Dataset "{dataset_name}" is not supported. Supported: {list(SUPPORTED_DATASETS.keys())}'
+        assert dataset_name in DATASET_REGISTRY, \
+            f'Dataset "{dataset_name}" is not supported. Supported: {list(DATASET_REGISTRY.keys())}'
 
-        self._dataset = SUPPORTED_DATASETS[dataset_name](split=split, *args, **kwargs)
-        sentences = [s for s in self._dataset]  # TODO: Everything is currently loaded in memory for Torch dataset
+        self._dataset = DATASET_REGISTRY[dataset_name](split=split, *args, **kwargs)
+        sentences = list(self._dataset)  # TODO: Everything is currently loaded in memory for Torch dataset
         logger.info(f'Number of loaded sentences is {len(sentences)}.')
 
         if lemmatize:
@@ -220,11 +208,16 @@ class W2VCollateFunctional:
 
 
 def run_test() -> None:
-    test_dataset = W2VDataset(dataset_name='abcde', split='train', min_word_frequency=2, context_radius=1)
-    print(f'Vocabulary: {test_dataset.vocab.get_stoi()}')
+    test_dataset = TestDataset('train')
+    print('Test dataset sentenes')
+    for sentence in test_dataset:
+        print(sentence)
+
+    torch_test_dataset = W2VDataset(dataset_name='test', split='train', min_word_frequency=2, context_radius=1)
+    print(f'Vocabulary: {torch_test_dataset.vocab.get_stoi()}')
     print('Samples:')
-    for i in range(len(test_dataset)):
-        print(f'{test_dataset.get_raw(i)} -> {test_dataset[i]}')
+    for i in range(len(torch_test_dataset)):
+        print(f'{torch_test_dataset.get_raw(i)} -> {torch_test_dataset[i]}')
 
 
 if __name__ == '__main__':

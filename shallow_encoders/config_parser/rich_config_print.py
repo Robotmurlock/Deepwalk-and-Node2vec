@@ -1,6 +1,7 @@
 """
 Utility for pretty printing config in terminal.
 """
+import logging
 from typing import Sequence
 
 import rich
@@ -8,6 +9,8 @@ import rich.syntax
 import rich.tree
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.utilities import rank_zero_only
+
+logger = logging.getLogger('RichTree')
 
 
 @rank_zero_only
@@ -30,15 +33,15 @@ def print_config_tree(
         print_order (Sequence[str], optional): Determines in what order config components are printed.
         resolve (bool, optional): Whether to resolve reference fields of DictConfig.
     """
-    style = "dim"
-    tree = rich.tree.Tree("CONFIG", style=style, guide_style=style)
+    style = 'dim'
+    tree = rich.tree.Tree('CONFIG', style=style, guide_style=style)
 
     queue = []
 
     # add fields from `print_order` to queue
     for field in print_order:
-        queue.append(field) if field in cfg else log.warning(
-            f"Field '{field}' not found in config. Skipping '{field}' config printing..."
+        queue.append(field) if field in cfg else logger.warning(
+            f'Field "{field}" not found in config. Skipping "{field}" config printing...'
         )
 
     # add all the other fields to queue (not specified in `print_order`)
@@ -56,7 +59,7 @@ def print_config_tree(
         else:
             branch_content = str(config_group)
 
-        branch.add(rich.syntax.Syntax(branch_content, "yaml"))
+        branch.add(rich.syntax.Syntax(branch_content, 'yaml'))
 
     # print config tree
     rich.print(tree)

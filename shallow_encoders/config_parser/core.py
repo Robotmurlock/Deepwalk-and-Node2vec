@@ -16,7 +16,7 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
 from shallow_encoders.common.path import RUNS_PATH
-from shallow_encoders.word2vec.dataloader.torch import W2VDataset, W2VCollateFunctional
+from shallow_encoders.word2vec.dataloader.torch_dataset import W2VDataset, W2VCollateFunctional
 from shallow_encoders.word2vec.model import W2VBase
 from shallow_encoders.word2vec.trainer import Word2VecTrainer
 

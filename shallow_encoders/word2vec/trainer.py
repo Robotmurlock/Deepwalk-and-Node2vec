@@ -118,7 +118,7 @@ class Word2VecTrainer(pl.LightningModule):
                 if log_step:
                     self.log(f'{prefix}/{name}', value, prog_bar=False)
         else:
-            assert not torch.isnan(loss).any(), f'Got nan value!'
+            assert not torch.isnan(loss).any(), 'Got nan value!'
             loss = loss.detach().cpu()
             self._meter.push(f'{prefix}-epoch/loss', loss)
             if log_step:
