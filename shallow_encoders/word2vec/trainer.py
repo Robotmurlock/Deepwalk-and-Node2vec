@@ -148,8 +148,6 @@ class Word2VecTrainer(pl.LightningModule):
         negative_probas = torch.sigmoid(negative_logits)
         precision = 1 - (negative_probas >= 0.5).float().mean()
         self._meter.push('train-metrics/precision', precision)
-        print(positive_logits.mean(), negative_logits.mean())
-        print(loss['loss'], loss['positive-loss'], loss['negative-loss'], recall, precision)
 
         return loss
 

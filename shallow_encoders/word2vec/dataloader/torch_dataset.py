@@ -4,16 +4,14 @@ Torch wrapper for implemented dataset support.
 import logging
 import re
 from collections import Counter
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Iterator
 
 import torch
 from nltk.stem import WordNetLemmatizer
-from torch.utils.data import Dataset
+from torch.utils.data import IterableDataset
 from torchtext.vocab import build_vocab_from_iterator
-from tqdm import tqdm
 
-# noinspection PyUnresolvedReferences
-from shallow_encoders.graph import datasets
+from shallow_encoders.graph.datasets import RandomWalkDataset
 from shallow_encoders.word2vec.dataloader.registry import DATASET_REGISTRY
 from shallow_encoders.word2vec.dataloader.w2v_datasets import TestDataset  # This import important for the registry
 
@@ -58,11 +56,11 @@ def lemmatize_sentence(text: str) -> str:
         ws = list(map(lambda w: lemmatizer.lemmatize(w, tag), ws))
     return ' '.join(ws)
 
-class W2VDataset(Dataset):
+class W2VDataset(IterableDataset):
     """
     Adapter for Pytorch dataloader.
 
-    Note: Loads dataset into a RAM.
+    Note: Loads dataset into a RAM during vocabulary construction.
     """
     def __init__(
         self,
@@ -77,20 +75,17 @@ class W2VDataset(Dataset):
             dataset_name: Dataset name
             context_radius: CBOW and SG context radius (number of words before and after)
             min_word_frequency: Minimum number of word occurrences to add it into the vocabulary
+            lemmatize: Perform lemmatization on the sentences before tokenization
+            additional_parameters: Dataset specific parameters.
         """
         assert dataset_name in DATASET_REGISTRY, \
             f'Dataset "{dataset_name}" is not supported. Supported: {list(DATASET_REGISTRY.keys())}'
 
+        self._context_radius = context_radius
+        self._lemmatize = lemmatize
         self._dataset = DATASET_REGISTRY[dataset_name](**additional_parameters)
-        sentences = list(self._dataset)  # TODO: Everything is currently loaded in memory for Torch dataset
-        logger.info(f'Number of loaded sentences is {len(sentences)}.')
 
-        if lemmatize:
-            sentences = [lemmatize_sentence(s) for s in tqdm(sentences, desc='lemmatization', unit='sentence')]
-
-        tokenslist = [tokenize(s) for s in tqdm(sentences, desc='tokenization', unit='sentence')]
-        self._tokenslist = [tl for tl in tokenslist if 2 * context_radius + 1 <= len(tl)]
-        logger.info(f'Number of loaded sentences is {len(self._tokenslist)}.')
+        tokenslist = list(self.pipeline)  # IMPORTANT: This loads everything in memory
         self._vocab = build_vocab_from_iterator(
             iterator=tokenslist,
             specials=['<unk>'],
@@ -107,6 +102,38 @@ class W2VDataset(Dataset):
                     continue
                 self._word_frequency[word] += 1
         self._word_frequency = dict(self._word_frequency)
+
+        # State
+        self._pipeline_state = None
+
+    @property
+    def pipeline(self) -> Iterator:
+        """
+        Get iterator for post-processed sentences.
+
+        Returns:
+            Iterator over post-processed sentences.
+        """
+        return filter(lambda x: x is not None, map(self.sentence_pipeline, self._dataset))
+
+    def sentence_pipeline(self, sentence: str) -> Optional[List[str]]:
+        """
+        Performs sentence pipeline.
+        - Lemmatization (optional) - NLP specific
+        - Tokenization (with filtering - NLP specific)
+        - Filtering over short sentences - mostly NLP specific
+
+        Args:
+            sentence: Raw sentence
+
+        Returns:
+            List of postprocessed words
+        """
+        sentence = lemmatize_sentence(sentence) if self._lemmatize else sentence
+        tokens = tokenize(sentence)
+        if 2 * self._context_radius + 1 > len(tokens):
+            return None
+        return tokens
 
     def get_n_most_frequent_words(self, n: int) -> Tuple[List[str], List[int]]:
         """
@@ -137,30 +164,30 @@ class W2VDataset(Dataset):
 
     @property
     def has_labels(self) -> bool:
-        return hasattr(self._dataset, 'labels')
+        """
+        Check if dataset supports labels.
+
+        Returns:
+            True if dataset supports labels else False
+        """
+        return isinstance(self._dataset, RandomWalkDataset) and self._dataset.has_labels
 
     @property
     def labels(self) -> Dict[str, str]:
-        assert self.has_labels, 'Dataset does not support labels!'
-        return self._dataset.labels
-
-    def __len__(self) -> int:
-        return len(self._tokenslist)
-
-    def get_raw(self, i: int) -> List[str]:
         """
-        Gets raw tokenized sentence.
-
-        Args:
-            i: Item index
+        Gets dataset word (node) labels.
 
         Returns:
-            Tokenized sentence
+            Dataset labels
         """
-        return self._tokenslist[i]
+        return self._dataset.labels
 
-    def __getitem__(self, i: int) -> torch.Tensor:
-        tokens = self.get_raw(i)
+    def __iter__(self) -> 'W2VDataset':
+        self._pipeline_state = self.pipeline
+        return self
+
+    def __next__(self) -> torch.Tensor:
+        tokens = next(self._pipeline_state)
         indices = self._vocab(tokens)
         indices = torch.tensor(indices, dtype=torch.long)
         return indices
@@ -225,8 +252,8 @@ def run_test() -> None:
     torch_test_dataset = W2VDataset(dataset_name='test', min_word_frequency=2, context_radius=1)
     print(f'Vocabulary: {torch_test_dataset.vocab.get_stoi()}')
     print('Samples:')
-    for i in range(len(torch_test_dataset)):
-        print(f'{torch_test_dataset.get_raw(i)} -> {torch_test_dataset[i]}')
+    for inputs in torch_test_dataset:
+        print(inputs)
 
 
 if __name__ == '__main__':

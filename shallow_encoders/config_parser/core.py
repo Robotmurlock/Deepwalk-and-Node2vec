@@ -154,8 +154,7 @@ class DatamoduleConfig:
             dataset,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            collate_fn=collage_fn,
-            shuffle=True
+            collate_fn=collage_fn
         )
 
 
