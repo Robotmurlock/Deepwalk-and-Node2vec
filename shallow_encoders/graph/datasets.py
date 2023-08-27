@@ -2,96 +2,12 @@
 Implementation of graph datasets specialized for W2V
 """
 import random
-from abc import ABC, abstractmethod
-from typing import List, Optional, Dict
+from typing import Optional, Dict
 
 import networkx as nx
 
 from shallow_encoders.word2vec.dataloader.registry import register_dataset
-
-
-class RandomWalk(ABC):
-    """
-    RandomWalk method interface definition.
-    """
-    def __init__(self, graph: nx.Graph, length: int):
-        """
-        Args:
-            graph: Graph
-            length: Random walk length
-        """
-        assert length >= 1, 'Minimum walk length is 1!'
-
-        self._graph = graph
-        self._length = length
-
-    @abstractmethod
-    def walk(self, node: str) -> str:
-        """
-        Performs a random walk starting from node `node`.
-        Returns graph walk in sentence format.
-        Example: `n1 n2 n3` for walk of nodes (n1, n2, n3)
-
-        Args:
-            node: Starting node
-
-        Returns:
-            walk as a sentence.
-        """
-        pass
-
-
-class DeepWalk(RandomWalk):
-    """
-    Implementation of simple random walk generator.
-    Reference: https://arxiv.org/pdf/1403.6652.pdf
-    """
-    def walk(self, node: str) -> str:
-        walk_nodes: List[str] = [node]
-
-        while len(walk_nodes) < self._length:
-            neighbors = list(self._graph.neighbors(node))
-            if not nx.is_weighted(self._graph):
-                normalized_weights = [1 / len(neighbors) for _ in neighbors]
-            else:
-                neighbor_weight_sum = sum(self._graph[node][neighbor]['weight'] for neighbor in neighbors)
-                normalized_weights = [self._graph[node][neighbor]['weight'] / neighbor_weight_sum for neighbor in neighbors]
-
-            child = random.choices(neighbors, weights=normalized_weights, k=1)[0]
-            walk_nodes.append(child)
-            node = child
-
-        return ' '.join(walk_nodes)
-
-
-def random_walk_factory(name: str, graph: nx.Graph, length: int, additional_params: Optional[dict] = None) -> RandomWalk:
-    """
-    Creates random walk method object.
-
-    Args:
-        name: Method name
-        graph: Graph
-        length: Walk length
-        additional_params: Additional method specific parameters
-    Returns:
-        RandomWalk generator.
-    """
-    name = name.lower()
-    if additional_params is None:
-        additional_params = {}
-
-    SUPPORTED_METHODS = {
-        'deepwalk': DeepWalk
-    }
-
-    assert name in SUPPORTED_METHODS, f'Unknown method "{name}". Supported: {list(SUPPORTED_METHODS.keys())}'
-
-
-    return SUPPORTED_METHODS[name](
-        graph=graph,
-        length=length,
-        **additional_params
-    )
+from shallow_encoders.graph.random_walk_generator import random_walk_factory
 
 
 class RandomWalkDataset:
@@ -105,6 +21,7 @@ class RandomWalkDataset:
         walks_per_node: int,
         walk_length: int,
         method: str = 'deepwalk',
+        method_params: Optional[dict] = None,
         labels: Optional[Dict[str, str]] = None
     ):
         """
@@ -114,13 +31,20 @@ class RandomWalkDataset:
             walk_length: Random walk length
             method: Random walk method
             labels: Graph node labels (optional)
+            method_params: Random walk generator specific parameters
         """
         self._graph = graph
         self._nodes = list(self._graph)
         self._labels = labels
         random.shuffle(self._nodes)
 
-        self._walk_generator = random_walk_factory(name=method, graph=graph, length=walk_length)
+        method_params = {} if method_params is None else method_params
+        self._walk_generator = random_walk_factory(
+            name=method,
+            graph=graph,
+            length=walk_length,
+            additional_params=method_params
+        )
         self._walks_per_node = walks_per_node
 
         # State
@@ -218,7 +142,7 @@ class KarateClubDataset(RandomWalkDataset):
     """
     Standard toy example for GNN tasks.
     """
-    def __init__(self, walks_per_node: int, walk_length: int, method: str = 'deepwalk'):
+    def __init__(self, walks_per_node: int, walk_length: int, method: str = 'deepwalk', **kwargs):
         graph = nx.karate_club_graph()
         mapping = {node: f'n{node + 1:02d}' for node in graph.nodes}  # Convert integers to strings
         graph = nx.relabel_nodes(graph, mapping)
@@ -237,5 +161,6 @@ class KarateClubDataset(RandomWalkDataset):
             walks_per_node=walks_per_node,
             walk_length=walk_length,
             method=method,
-            labels=labels
+            labels=labels,
+            **kwargs
         )

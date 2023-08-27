@@ -16,7 +16,10 @@ datamodule:
   additional_parameters:
     walks_per_node: 64
     walk_length: 10
-    method: deepwalk
+    method: node2vec
+    method_params:
+      p: 1
+      q: 0.5
 
   batch_size: 64
   num_workers: 8
