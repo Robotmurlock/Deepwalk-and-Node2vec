@@ -9,13 +9,13 @@ from shallow_encoders.common.path import ASSETS_PATH
 from shallow_encoders.word2vec.dataloader.iterators import InMemoryIterator, FileIterator
 from shallow_encoders.word2vec.dataloader.registry import register_dataset
 
+
 @register_dataset('test')
 class TestDataset(InMemoryIterator):
     """
     Test dataset used to test dataloader.
     """
-    def __init__(self, split: str):
-        _ = split
+    def __init__(self):
         super().__init__(sentences=[
                 'a, a, c, b, b',
                 'hello world! hello world!',
@@ -32,8 +32,7 @@ class ABCDEDataset(InMemoryIterator):
     - `c` and `d` go together in a sentence
     - `e` goes alone in a sentence
     """
-    def __init__(self, split: str):
-        _ = split  # Ignored
+    def __init__(self):
         super().__init__(
             sentences=[
                 'a b a b a b a b a b',  # `a` goes with `b`
@@ -69,10 +68,10 @@ class WikiText2Dataset(WikiTextDataset):
     """
     Concrete Wiki dataset - `wikitext-2`
     """
-    def __init__(self, split: str, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(
             dataset_name='wikitext-2',
-            split=split,
+            split='train',
             *args,
             **kwargs
         )
@@ -83,10 +82,10 @@ class WikiText103Dataset(WikiTextDataset):
     """
     Concrete Wiki dataset - `wikitext-103`
     """
-    def __init__(self, split: str, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(
             dataset_name='wikitext-103',
-            split=split,
+            split='train',
             *args,
             **kwargs
         )
@@ -97,8 +96,7 @@ class ShakespeareDataset(InMemoryIterator):
     """
     Parses Shakespeare dataset and loads all sentences in memory iterator.
     """
-    def __init__(self, split: str, assets_path: str = ASSETS_PATH):
-        _ = split
+    def __init__(self, assets_path: str = ASSETS_PATH):
         df = pd.read_csv(os.path.join(assets_path, 'Shakespeare_data.csv'))
         lines = df['PlayerLine'].values.tolist()
         super().__init__(sentences=lines)

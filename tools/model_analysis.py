@@ -12,6 +12,7 @@ All these components can be turned on/off in configs.
 import logging
 import os
 from pathlib import Path
+import matplotlib.colors as mcolors
 
 import hydra
 import matplotlib.pyplot as plt
@@ -27,6 +28,10 @@ from tools import conventions
 from tools.utils import setup_pipeline
 
 logger = logging.getLogger('ModelAnalysis')
+
+
+MATPLOTLIB_COLORS = list(mcolors.BASE_COLORS) + list(mcolors.CSS4_COLORS)
+DEFAULT_WORD_COLOR = 'blue'
 
 
 def show_closest_pairs_for_each_word(
@@ -84,7 +89,8 @@ def visualize_embeddings(
     model: W2VBase,
     dataset: W2VDataset,
     output_path: str,
-    max_words: int
+    max_words: int,
+    skip_unk: bool
 ) -> None:
     """
     Visualizes model input embeddings. Assumes that embedding dimensionality is at least 2.
@@ -95,17 +101,23 @@ def visualize_embeddings(
         dataset: Dataset
         output_path: Result directory path
         max_words: Maximum number of words to use (filtering by frequency)
+        skip_unk: Skip unk token during visualization
     """
     embeddings = model.input_embedding.numpy()
     words = dataset.vocab.get_itos()
+    unk_index = dataset.vocab['<unk>']
 
     # Sample words for presentation
     vocab_size = len(dataset.vocab)
     if vocab_size > max_words:
         _, sampled_indices = dataset.get_n_most_frequent_words(max_words)
-        embeddings = embeddings[sampled_indices]
     else:
         sampled_indices = list(range(vocab_size))
+
+    if skip_unk:
+        sampled_indices = [index for index in sampled_indices if index != unk_index]
+
+    embeddings = embeddings[sampled_indices]
     words = [words[i] for i in sampled_indices]
 
     # Assert the embedding dimension is 2 or larger
@@ -117,9 +129,21 @@ def visualize_embeddings(
         tsne = TSNE(n_components=2, random_state=42)
         embeddings = tsne.fit_transform(embeddings)
 
+    # Create labels colors (if dataset supports labels)
+    unique_labels, label_to_color = None, None
+    if dataset.has_labels:
+        unique_labels = list(set(dataset.labels.values()))
+        label_to_color = {label: MATPLOTLIB_COLORS[i] for i, label in enumerate(unique_labels)}
+
     # Create the visualization
     fig = plt.figure(figsize=(10, 10))
-    plt.scatter(embeddings[:, 0], embeddings[:, 1], alpha=0.6)
+    if unique_labels is None:
+        plt.scatter(embeddings[:, 0], embeddings[:, 1], alpha=0.6)
+    else:
+        for label in unique_labels:
+            label_color = label_to_color[label]
+            label_indices = [i for i, w in enumerate(words) if dataset.labels[w] == label]
+            plt.scatter(embeddings[label_indices, 0], embeddings[label_indices, 1], alpha=0.6, color=label_color)
 
     # Annotate the words on the visualization
     for i, word in enumerate(words):
@@ -219,7 +243,8 @@ def main(cfg: DictConfig) -> None:
             model=pl_trainer.model,
             dataset=dataset,
             output_path=analysis_exp_path,
-            max_words=cfg.analysis.visualize_embeddings_max_words
+            max_words=cfg.analysis.visualize_embeddings_max_words,
+            skip_unk=cfg.analysis.visualize_skip_unk
         )
 
     if cfg.analysis.semantics_test:

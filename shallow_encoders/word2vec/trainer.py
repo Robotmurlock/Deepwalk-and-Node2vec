@@ -38,7 +38,7 @@ class Word2VecTrainer(pl.LightningModule):
         super().__init__()
         self._optimizer = optimizer
         self._scheduler = scheduler
-        self._loss_func = NegativeSamplingLoss(proba_input=False)
+        self._loss_func = NegativeSamplingLoss()
 
         self._neg_samples = neg_samples
         self._vocab_size = vocab_size
@@ -130,10 +130,12 @@ class Word2VecTrainer(pl.LightningModule):
     # noinspection PyUnresolvedReferences
     def training_step(self, batch: List[torch.Tensor], *args, **kwargs) -> torch.Tensor:
         inputs, outputs = batch
-        noise = generate_noise_batch(inputs.shape[0], self._neg_samples, self._vocab_size).to(inputs)
+        noise = generate_noise_batch(outputs.shape[0], outputs.shape[1], self._neg_samples, self._vocab_size).to(outputs)
+        noise = noise.view(outputs.shape[0], -1)  # changing shape for easier matrix multiplication
         positive_logits = self._model(inputs, outputs, proba=False)
         negative_logits = self._model(inputs, noise, proba=False)
 
+        negative_logits = negative_logits.view(outputs.shape[0], outputs.shape[1], -1)
         loss = self._loss_func(positive_logits, negative_logits)
 
         self._log_loss(loss, prefix='train', log_step=True)
@@ -146,6 +148,8 @@ class Word2VecTrainer(pl.LightningModule):
         negative_probas = torch.sigmoid(negative_logits)
         precision = 1 - (negative_probas >= 0.5).float().mean()
         self._meter.push('train-metrics/precision', precision)
+        print(positive_logits.mean(), negative_logits.mean())
+        print(loss['loss'], loss['positive-loss'], loss['negative-loss'], recall, precision)
 
         return loss
 

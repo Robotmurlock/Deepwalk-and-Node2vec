@@ -103,6 +103,7 @@ class DatamoduleConfig:
 
     # Additional dataset config
     lemmatize: bool = False
+    additional_parameters: dict = field(default_factory=dict)
 
     def instantiate_dataset(self) -> W2VDataset:
         """
@@ -113,10 +114,10 @@ class DatamoduleConfig:
         """
         return W2VDataset(
             dataset_name=self.dataset_name,
-            split='train',
             context_radius=self.context_radius,
             min_word_frequency=self.min_word_frequency,
-            lemmatize=self.lemmatize
+            lemmatize=self.lemmatize,
+            additional_parameters=self.additional_parameters
         )
 
     def instantiate_collate_fn(self) -> W2VCollateFunctional:
@@ -170,6 +171,7 @@ class ModelAnalysisConfig:
     # Projected embeddings visualization
     visualize_embeddings: bool = True
     visualize_embeddings_max_words: int = 1000
+    visualize_skip_unk: bool = True
 
     # Semantics test
     semantics_test: bool = True

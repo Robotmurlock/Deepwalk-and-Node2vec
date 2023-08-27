@@ -41,5 +41,5 @@ analysis:
 
   closest_pairs: true
   closest_pairs_per_word: 3
-  visualize_embeddings: false
+  visualize_embeddings: true
   semantics_test: false

@@ -4,7 +4,7 @@ Torch wrapper for implemented dataset support.
 import logging
 import re
 from collections import Counter
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict
 
 import torch
 from nltk.stem import WordNetLemmatizer
@@ -12,6 +12,8 @@ from torch.utils.data import Dataset
 from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
 
+# noinspection PyUnresolvedReferences
+from shallow_encoders.graph import datasets
 from shallow_encoders.word2vec.dataloader.registry import DATASET_REGISTRY
 from shallow_encoders.word2vec.dataloader.w2v_datasets import TestDataset  # This import important for the registry
 
@@ -65,23 +67,21 @@ class W2VDataset(Dataset):
     def __init__(
         self,
         dataset_name: str,
-        split: str,
         context_radius: int = 5,
         min_word_frequency: int = 20,
         lemmatize: bool = False,
-        *args, **kwargs
+        additional_parameters: Optional[dict] = None
     ):
         """
         Args:
             dataset_name: Dataset name
-            split: split name (train, val, test)
             context_radius: CBOW and SG context radius (number of words before and after)
             min_word_frequency: Minimum number of word occurrences to add it into the vocabulary
         """
         assert dataset_name in DATASET_REGISTRY, \
             f'Dataset "{dataset_name}" is not supported. Supported: {list(DATASET_REGISTRY.keys())}'
 
-        self._dataset = DATASET_REGISTRY[dataset_name](split=split, *args, **kwargs)
+        self._dataset = DATASET_REGISTRY[dataset_name](**additional_parameters)
         sentences = list(self._dataset)  # TODO: Everything is currently loaded in memory for Torch dataset
         logger.info(f'Number of loaded sentences is {len(sentences)}.')
 
@@ -134,6 +134,15 @@ class W2VDataset(Dataset):
             Vocabulary
         """
         return self._vocab
+
+    @property
+    def has_labels(self) -> bool:
+        return hasattr(self._dataset, 'labels')
+
+    @property
+    def labels(self) -> Dict[str, str]:
+        assert self.has_labels, 'Dataset does not support labels!'
+        return self._dataset.labels
 
     def __len__(self) -> int:
         return len(self._tokenslist)
@@ -213,7 +222,7 @@ def run_test() -> None:
     for sentence in test_dataset:
         print(sentence)
 
-    torch_test_dataset = W2VDataset(dataset_name='test', split='train', min_word_frequency=2, context_radius=1)
+    torch_test_dataset = W2VDataset(dataset_name='test', min_word_frequency=2, context_radius=1)
     print(f'Vocabulary: {torch_test_dataset.vocab.get_stoi()}')
     print('Samples:')
     for i in range(len(torch_test_dataset)):

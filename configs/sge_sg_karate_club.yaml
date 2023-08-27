@@ -3,18 +3,22 @@ defaults:
 
 model:
   _target_: shallow_encoders.word2vec.model.SkipGram
-  embedding_size: 2
-  max_norm: 1.0
+  embedding_size: 8
+  max_norm: null
   # vocab_size - unknown until dataset is loaded
 
 datamodule:
-  dataset_name: 'abcde'
+  dataset_name: 'graph_karate_club'
   mode: 'sg'
   context_radius: 1
   max_length: 256
   min_word_frequency: 0
+  additional_parameters:
+    walks_per_node: 64
+    walk_length: 3
+    method: deepwalk
 
-  batch_size: 4
+  batch_size: 64
   num_workers: 8
 
 train:
@@ -26,20 +30,20 @@ train:
     _target_: torch.optim.Adam
     lr: 0.1
 
-  max_epochs: 100
+  max_epochs: 200
 
   scheduler:
     _target_: torch.optim.lr_scheduler.StepLR
-    step_size: 50
+    step_size: 100
     gamma: 0.1
 
   loss:
-    negative_samples: 1
+    negative_samples: 5
 
 analysis:
   checkpoint: 'last.ckpt'
 
   closest_pairs: true
-  closest_pairs_per_word: 3
+  closest_pairs_per_word: 5
   visualize_embeddings: true
   semantics_test: false
