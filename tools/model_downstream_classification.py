@@ -7,15 +7,18 @@ import logging
 import os
 import random
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import hydra
 import matplotlib.pyplot as plt
+import networkx as nx
+import numpy
 import numpy as np
 from omegaconf import DictConfig
 from sklearn.linear_model import LogisticRegression
 
 from shallow_encoders.common.path import CONFIG_PATH
+from shallow_encoders.graph import edge_operators
 from shallow_encoders.word2vec.dataloader.torch_dataset import W2VDataset
 from shallow_encoders.word2vec.model import W2VBase
 from tools import conventions
@@ -58,6 +61,20 @@ def plot_logistic_regression_decision_boundary_line(points: np.ndarray, clf: Log
         plt.plot(x_values, y_values, color='red', label=f'Decision Boundary {i:03d}')
 
 
+def create_and_fit_classification_model(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X: np.ndarray,
+    y: np.ndarray
+) -> Tuple[LogisticRegression, float]:
+    clf = LogisticRegression()
+    clf.fit(X_train, y_train)
+
+    # Evaluate model
+    y_hat = clf.predict(X)
+    return clf, float(np.equal(y_hat, y).astype(np.float32).mean())
+
+
 def perform_node_classification(
     model: W2VBase,
     dataset: W2VDataset,
@@ -78,32 +95,25 @@ def perform_node_classification(
         n_experiments: Number of experiments to perform
         visualize: Visualize best model
     """
-    # Create data for training
     X = model.input_embedding.numpy()[1:, :]  # Skip `<unk>`
     vertices = dataset.vocab.get_itos()[1:]  # Skip `<unk>`
     vertex_labels = [dataset.labels[v] for v in vertices]
     y = np.array(labels_to_integers(vertex_labels), dtype=np.float32)
 
-    # Create train dataset
     n_samples = y.shape[0]
     n_train_samples = round(train_ratio * n_samples)
 
     best_accuracy, best_clf = None, None
     accuracy_sum = 0.0
     for i in range(n_experiments):
+        # Create train dataset
         indices = list(range(n_samples))
         random.shuffle(indices)
         sampled_indices = sorted(indices[:n_train_samples])
         X_train = X[sampled_indices, :].copy()
         y_train = y[sampled_indices].copy()
 
-        # Create and fit a linear model
-        clf = LogisticRegression()
-        clf.fit(X_train, y_train)
-
-        # Evaluate model
-        y_hat = clf.predict(X)
-        accuracy = float(np.equal(y_hat, y).astype(np.float32).mean())
+        clf, accuracy = create_and_fit_classification_model(X_train, y_train, X, y)
         accuracy_sum += accuracy
 
         if best_accuracy is None or accuracy >= best_accuracy:
@@ -135,6 +145,112 @@ def perform_node_classification(
         logger.info(f'Saved figure at path "{fig_path}".')
 
 
+def sample_negative_edges(graph: nx.Graph, n: int) -> List[Tuple[str, str]]:
+    """
+    Sample `n` negative sample edges.
+    This algorithm may include duplicate negative samples,
+    but it's rare for medium and large sized graphs
+
+    Args:
+        graph: Graph
+        n: Size
+
+    Returns:
+        Sample of negative edges (non-existent).
+    """
+    nodes = list(graph.nodes)
+
+    sampled_negative_edges: List[Tuple[str, str]] = []
+    for _ in range(n):
+        is_feasible_sample = False
+
+        while not is_feasible_sample:
+            node = random.choice(nodes)
+            neighbors = list(graph.neighbors(node))
+            not_neighbors = list(set(nodes) - set(neighbors))
+            if len(not_neighbors) >= 1:
+                # There is at least one random edge to choose
+                other_node = random.choice(not_neighbors)
+                sampled_negative_edges.append((node, other_node))
+
+                is_feasible_sample = True
+
+    return sampled_negative_edges
+
+
+def create_edge_embeddings(
+    node_embeddings: np.ndarray,
+    edges: List[Tuple[int, int]],
+    edge_operator: edge_operators.EdgeOperator
+) -> np.ndarray:
+    edge_embeddings: List[np.ndarray] = []
+    for s, e in edges:
+        edge_embedding = edge_operator(node_embeddings[s, :], node_embeddings[e, :])
+        edge_embeddings.append(edge_embedding)
+
+    return np.stack(edge_embeddings)
+
+
+def perform_edge_classification(
+    model: W2VBase,
+    dataset: W2VDataset,
+    train_ratio: float,
+    n_experiments: int,
+    edge_operator_name: str
+) -> None:
+    node_embeddings = model.input_embedding.numpy()
+
+    graph = dataset.graph
+    token_to_index = dataset.vocab.get_stoi()
+    edges = list(graph.edges)
+    n_edges = len(edges)
+    edge_operator = edge_operators.edge_operator_factory(edge_operator_name)
+
+    best_accuracy = None
+    accuracy_sum = 0.0
+    for i in range(n_experiments):
+        # Create train dataset
+        n_train_samples = round(train_ratio * n_edges)
+        n_val_samples = n_edges - n_train_samples
+
+        # Sample positive samples
+        random.shuffle(edges)
+        train_positive_edges = edges[:n_train_samples]
+
+        # Sample negative samples
+        train_negative_edges = sample_negative_edges(graph, n_train_samples)
+        val_negative_edges = sample_negative_edges(graph, n_val_samples)
+
+        # Create dataset for LR
+        train_edges = train_positive_edges + train_negative_edges
+        train_edges = [(token_to_index[s], token_to_index[e]) for s, e in train_edges]
+        y_train = np.array(n_train_samples * [1] + n_train_samples * [0], dtype=np.float32)
+        all_edges = edges + train_negative_edges + val_negative_edges
+        all_edges = [(token_to_index[s], token_to_index[e]) for s, e in all_edges]
+        y = numpy.array(n_edges * [1] + n_train_samples * [0] + n_val_samples * [0], dtype=np.float32)
+
+        X_train = create_edge_embeddings(
+            node_embeddings=node_embeddings,
+            edges=train_edges,
+            edge_operator=edge_operator
+        )
+
+        X = create_edge_embeddings(
+            node_embeddings=node_embeddings,
+            edges=all_edges,
+            edge_operator=edge_operator
+        )
+
+        _, accuracy = create_and_fit_classification_model(X_train, y_train, X, y)
+        accuracy_sum += accuracy
+
+        if best_accuracy is None or accuracy >= best_accuracy:
+            best_accuracy = accuracy
+
+    assert best_accuracy is not None, 'No experiments performed!'
+    accuracy = accuracy_sum / n_experiments
+    logger.info(f'Edge classification accuracy: {100 * accuracy:.2f}% (averaged over {n_experiments} experiments).')
+    logger.info(f'Best accuracy score: {100 * best_accuracy:.2f}%.')
 
 
 @hydra.main(config_path=CONFIG_PATH, config_name='w2v_sg_graph_triplets.yaml')
@@ -159,6 +275,14 @@ def main(cfg: DictConfig) -> None:
             visualize=cfg.downstream.node_classification_visualize
         )
 
+    if cfg.downstream.edge_classification:
+        perform_edge_classification(
+            model=pl_trainer.model,
+            dataset=dataset,
+            edge_operator_name=cfg.downstream.edge_operator_name,
+            train_ratio=cfg.downstream.edge_classification_train_ratio,
+            n_experiments=cfg.downstream.edge_classification_n_experiments
+        )
 
 
 if __name__ == '__main__':

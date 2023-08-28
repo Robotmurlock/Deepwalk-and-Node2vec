@@ -9,10 +9,13 @@ fi
 # Make sure assets directory exists or create it
 mkdir -p assets
 
-# Define the URLs for datasets
+# NLP datasets
 wiki_text_2="https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-2-v1.zip?ref=blog.salesforceairesearch.com"
 wiki_text_103="https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-103-v1.zip?ref=blog.salesforceairesearch.com"
 # shakespeare (manual download): https://www.kaggle.com/datasets/kingburrito666/shakespeare-plays
+
+# Graph datasets
+cora="https://linqs-data.soe.ucsc.edu/public/lbc/cora.tgz"
 
 # Download and unzip dataset based on the argument
 case $1 in
@@ -23,6 +26,10 @@ case $1 in
     "wiki-text-103")
         wget "$wiki_text_103" -O assets/wikitext-103-v1.zip
         unzip assets/wikitext-103-v1.zip -d assets/
+        ;;
+    "cora")
+        wget "$cora" -O assets/cora.tgz
+        tar -xvf assets/cora.tgz -C assets/
         ;;
     *)
         echo "Unknown dataset name: $1"

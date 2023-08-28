@@ -186,6 +186,12 @@ class GraphDownstreamTaskConfig:
     node_classification_n_experiments: int = 10
     node_classification_visualize: bool = True
 
+    # edge classification
+    edge_classification: bool = True
+    edge_operator_name: str = 'hadamard'
+    edge_classification_train_ratio: float = 0.5
+    edge_classification_n_experiments: int = 10
+
 
 @dataclass
 class PathConfig:

@@ -6,6 +6,7 @@ import re
 from collections import Counter
 from typing import List, Tuple, Optional, Dict, Iterator
 
+import networkx as nx
 import torch
 from nltk.stem import WordNetLemmatizer
 from torch.utils.data import IterableDataset
@@ -186,6 +187,28 @@ class W2VDataset(IterableDataset):
             Dataset labels
         """
         return self._dataset.labels
+
+    @property
+    def is_graph(self) -> bool:
+        """
+        Check if dataset is a graph
+
+        Returns:
+            True if dataset supports labels else False
+        """
+        return isinstance(self._dataset, RandomWalkDataset)
+
+    @property
+    def graph(self) -> nx.Graph:
+        """
+        FIXME: Create factory for torch dataset
+
+        Gets dataset graph.
+
+        Returns:
+            Dataset graph
+        """
+        return self._dataset.graph
 
     def __iter__(self) -> 'W2VDataset':
         self._pipeline_state = self.pipeline
