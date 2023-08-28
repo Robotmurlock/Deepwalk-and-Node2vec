@@ -177,6 +177,17 @@ class ModelAnalysisConfig:
 
 
 @dataclass
+class GraphDownstreamTaskConfig:
+    checkpoint: str = 'last.ckpt'
+
+    # node classification
+    node_classification: bool = True
+    node_classification_train_ratio: float = 0.5
+    node_classification_n_experiments: int = 10
+    node_classification_visualize: bool = True
+
+
+@dataclass
 class PathConfig:
     output_dir: str = RUNS_PATH
 
@@ -188,6 +199,9 @@ class GlobalConfig:
     model: dict
     analysis: ModelAnalysisConfig = field(default_factory=ModelAnalysisConfig)
     path: PathConfig = field(default_factory=PathConfig)
+
+    # Graph shallow encoder - node and edge classification
+    downstream: GraphDownstreamTaskConfig = field(default_factory=GraphDownstreamTaskConfig)
 
     def instantiate_model(
         self,

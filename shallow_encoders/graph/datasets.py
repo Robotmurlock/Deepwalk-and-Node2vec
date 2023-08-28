@@ -115,7 +115,7 @@ class GraphTriplets(RandomWalkDataset):
     Simple graph that consists of `NUM_CLUSTERS` fully connected triplets.
     This dataset is used as a sanity test.
     """
-    NUM_CLUSTERS = 2
+    NUM_CLUSTERS = 3
 
     def __init__(self, walks_per_node: int, walk_length: int, method: str = 'deepwalk'):
         graph = nx.Graph()

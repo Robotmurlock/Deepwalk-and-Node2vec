@@ -12,7 +12,6 @@ All these components can be turned on/off in configs.
 import logging
 import os
 from pathlib import Path
-import matplotlib.colors as mcolors
 
 import hydra
 import matplotlib.pyplot as plt
@@ -25,13 +24,10 @@ from shallow_encoders.word2vec.dataloader.torch_dataset import W2VDataset
 from shallow_encoders.word2vec.model import W2VBase
 from shallow_encoders.word2vec.utils.func import pairwise_cosine_similarity
 from tools import conventions
+from tools.utils import MATPLOTLIB_COLORS
 from tools.utils import setup_pipeline
 
 logger = logging.getLogger('ModelAnalysis')
-
-
-MATPLOTLIB_COLORS = list(mcolors.BASE_COLORS) + list(mcolors.CSS4_COLORS)
-DEFAULT_WORD_COLOR = 'blue'
 
 
 def show_closest_pairs_for_each_word(

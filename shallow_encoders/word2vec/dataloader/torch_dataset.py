@@ -86,8 +86,13 @@ class W2VDataset(IterableDataset):
         self._dataset = DATASET_REGISTRY[dataset_name](**additional_parameters)
 
         tokenslist = list(self.pipeline)  # IMPORTANT: This loads everything in memory
+
+        # This is not efficient but is necessary in order to keep vocabulary token indices
+        all_tokens = sorted(list(set([t for tokens in tokenslist for t in tokens])))
+        all_tokens = [[t] for t in all_tokens]  # list[str] -> list[list[str]]
+
         self._vocab = build_vocab_from_iterator(
-            iterator=tokenslist,
+            iterator=all_tokens,
             specials=['<unk>'],
             min_freq=min_word_frequency
         )

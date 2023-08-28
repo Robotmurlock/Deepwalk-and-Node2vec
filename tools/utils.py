@@ -5,11 +5,15 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+import matplotlib.colors as mcolors
 from omegaconf import DictConfig, OmegaConf
 
 from shallow_encoders.common.path import RUNS_PATH
 from shallow_encoders.config_parser import GlobalConfig, print_config_tree
 from tools.conventions import get_run_history_experiment_path, DATETIME_FORMAT
+
+MATPLOTLIB_COLORS = list(mcolors.BASE_COLORS) + list(mcolors.CSS4_COLORS)
+DEFAULT_WORD_COLOR = 'blue'
 
 
 def setup_pipeline(cfg: DictConfig, task: str) -> GlobalConfig:
