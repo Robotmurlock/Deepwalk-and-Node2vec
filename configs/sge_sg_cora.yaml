@@ -47,25 +47,30 @@ train:
 analysis:
   checkpoint: 'last.ckpt'
 
-  closest_pairs: true
-  closest_pairs_per_word: 5
-  visualize_embeddings: true
-  visualize_embeddings_annotate: false
-  visualize_embeddings_max_words: 10_000
+  closest_pairs:
+    enable: true
+    max_words: 50
+    pairs_per_word: 5
 
-  semantics_test: false
+  visualize_embeddings:
+    enable: true
+    annotate: false
+    max_words: 10_000
+
+  semantics_test:
+    enable: false
 
 downstream:
   checkpoint: 'last.ckpt'
 
-  # node classification
-  node_classification: true
-  node_classification_train_ratio: 1.0
-  node_classification_n_experiments: 10
-  node_classification_visualize: false
+  node_classification:
+    enable: true
+    train_ratio: 1.0
+    n_experiments: 10
+    visualize: false
 
-  # Link classification
-  edge_classification: true
-  edge_operator_name: 'hadamard'
-  edge_classification_train_ratio: 0.5
-  edge_classification_n_experiments: 10
+  edge_classification:
+    enable: true
+    operator_name: 'hadamard'
+    train_ratio: 0.5
+    n_experiments: 10

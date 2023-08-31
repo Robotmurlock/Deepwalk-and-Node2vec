@@ -159,39 +159,54 @@ class DatamoduleConfig:
 
 
 @dataclass
+class ModelClosestPairAnalysisConfig:
+    enable: bool = True
+    max_words: int = 100
+    pairs_per_word: int = 5
+
+
+@dataclass
+class ModelVisualizeEmbeddingsAnalysisConfig:
+    enable: bool = True
+    annotate: bool = True
+    max_words: int = 1000
+    skip_unk: bool = True
+
+
+@dataclass
+class ModelSemanticsTestAnalysisConfig:
+    enable: bool = True
+
+
+@dataclass
 class ModelAnalysisConfig:
     checkpoint: str = 'last.ckpt'
+    closest_pairs: ModelClosestPairAnalysisConfig = field(default_factory=ModelClosestPairAnalysisConfig)
+    visualize_embeddings: ModelVisualizeEmbeddingsAnalysisConfig = field(default_factory=ModelVisualizeEmbeddingsAnalysisConfig)
+    semantics_test: ModelSemanticsTestAnalysisConfig = field(default_factory=ModelSemanticsTestAnalysisConfig)
 
-    # Closest pairs
-    closest_pairs: bool = True
-    closest_max_words: int = 100  # In case there are too many words in vocabulary
-    closest_pairs_per_word: int = 5
 
-    # Projected embeddings visualization
-    visualize_embeddings: bool = True
-    visualize_embeddings_annotate: bool = True
-    visualize_embeddings_max_words: int = 1000
-    visualize_skip_unk: bool = True
+@dataclass
+class GraphDownstreamNodeClassificationConfig:
+    enable: bool = True
+    train_ratio: float = 0.5
+    n_experiments: int = 10
+    visualize: bool = True
 
-    # Semantics test
-    semantics_test: bool = True
+
+@dataclass
+class GraphDownstreamEdgeClassificationConfig:
+    enable: bool = True
+    operator_name: str = 'hadamard'
+    train_ratio: float = 0.5
+    n_experiments: int = 10
 
 
 @dataclass
 class GraphDownstreamTaskConfig:
     checkpoint: str = 'last.ckpt'
-
-    # node classification
-    node_classification: bool = True
-    node_classification_train_ratio: float = 0.5
-    node_classification_n_experiments: int = 10
-    node_classification_visualize: bool = True
-
-    # edge classification
-    edge_classification: bool = True
-    edge_operator_name: str = 'hadamard'
-    edge_classification_train_ratio: float = 0.5
-    edge_classification_n_experiments: int = 10
+    node_classification: GraphDownstreamNodeClassificationConfig = field(default_factory=GraphDownstreamNodeClassificationConfig)
+    edge_classification: GraphDownstreamEdgeClassificationConfig = field(default_factory=GraphDownstreamEdgeClassificationConfig)
 
 
 @dataclass

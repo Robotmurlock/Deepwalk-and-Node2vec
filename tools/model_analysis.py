@@ -229,25 +229,25 @@ def main(cfg: DictConfig) -> None:
         conventions.get_analysis_experiment_path(cfg.path.output_dir, cfg.datamodule.dataset_name, cfg.train.experiment)
     Path(analysis_exp_path).mkdir(parents=True, exist_ok=True)
 
-    if cfg.analysis.closest_pairs:
+    if cfg.analysis.closest_pairs.enable:
         logger.info('Performing closest pairs analysis...')
         show_closest_pairs_for_each_word(
             model=pl_trainer.model,
             dataset=dataset,
-            max_words=cfg.analysis.closest_max_words,
-            pairs_per_word=cfg.analysis.closest_pairs_per_word,
+            max_words=cfg.analysis.closest_pairs.max_words,
+            pairs_per_word=cfg.analysis.closest_pairs.pairs_per_word,
             output_path=analysis_exp_path
         )
 
-    if cfg.analysis.visualize_embeddings:
+    if cfg.analysis.visualize_embeddings.enable:
         logger.info('Performing embedding visualization...')
         visualize_embeddings(
             model=pl_trainer.model,
             dataset=dataset,
             output_path=analysis_exp_path,
-            max_words=cfg.analysis.visualize_embeddings_max_words,
-            annotate=cfg.analysis.visualize_embeddings_annotate,
-            skip_unk=cfg.analysis.visualize_skip_unk
+            max_words=cfg.analysis.visualize_embeddings.max_words,
+            annotate=cfg.analysis.visualize_embeddings.annotate,
+            skip_unk=cfg.analysis.visualize_embeddings.skip_unk
         )
 
     if cfg.analysis.semantics_test:

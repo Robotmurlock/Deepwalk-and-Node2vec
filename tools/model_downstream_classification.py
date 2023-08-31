@@ -301,23 +301,23 @@ def main(cfg: DictConfig) -> None:
         conventions.get_analysis_experiment_path(cfg.path.output_dir, cfg.datamodule.dataset_name, cfg.train.experiment)
     Path(analysis_exp_path).mkdir(parents=True, exist_ok=True)
 
-    if cfg.downstream.node_classification:
+    if cfg.downstream.node_classification.enable:
         perform_node_classification(
             model=pl_trainer.model,
             dataset=dataset,
             output_path=analysis_exp_path,
-            train_ratio=cfg.downstream.node_classification_train_ratio,
-            n_experiments=cfg.downstream.node_classification_n_experiments,
-            visualize=cfg.downstream.node_classification_visualize
+            train_ratio=cfg.downstream.node_classification.train_ratio,
+            n_experiments=cfg.downstream.node_classification.n_experiments,
+            visualize=cfg.downstream.node_classification.visualize
         )
 
-    if cfg.downstream.edge_classification:
+    if cfg.downstream.edge_classification.enable:
         perform_edge_classification(
             model=pl_trainer.model,
             dataset=dataset,
-            edge_operator_name=cfg.downstream.edge_operator_name,
-            train_ratio=cfg.downstream.edge_classification_train_ratio,
-            n_experiments=cfg.downstream.edge_classification_n_experiments
+            edge_operator_name=cfg.downstream.edge_classification.operator_name,
+            train_ratio=cfg.downstream.edge_classification.train_ratio,
+            n_experiments=cfg.downstream.edge_classification.n_experiments
         )
 
 
