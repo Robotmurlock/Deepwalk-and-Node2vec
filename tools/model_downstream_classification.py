@@ -67,7 +67,19 @@ def create_and_fit_classification_model(
     X: np.ndarray,
     y: np.ndarray
 ) -> Tuple[LogisticRegression, float]:
-    clf = LogisticRegression()
+    """
+    Creates, fits and evaluates linear logistic regression model to given data.
+
+    Args:
+        X_train: Train input data
+        y_train: Train labels
+        X: Prediction input data
+        y: Prediction labels
+
+    Returns:
+        Classifier, accuracy
+    """
+    clf = LogisticRegression(max_iter=1_000)
     clf.fit(X_train, y_train)
 
     # Evaluate model
@@ -183,6 +195,17 @@ def create_edge_embeddings(
     edges: List[Tuple[int, int]],
     edge_operator: edge_operators.EdgeOperator
 ) -> np.ndarray:
+    """
+    Creates edge embedding data for training a linear classifier.
+
+    Args:
+        node_embeddings: Node embeddings
+        edges: List of edges to create embeddings for
+        edge_operator: Edge operator (e.g. Hadamard)
+
+    Returns:
+        Edge embeddings
+    """
     edge_embeddings: List[np.ndarray] = []
     for s, e in edges:
         edge_embedding = edge_operator(node_embeddings[s, :], node_embeddings[e, :])
@@ -198,6 +221,19 @@ def perform_edge_classification(
     n_experiments: int,
     edge_operator_name: str
 ) -> None:
+    """
+    Performs edge classification for given model on given dataset.
+
+    Args:
+        model: Shallow graph encoder network.
+        dataset: Dataset
+        train_ratio:
+        n_experiments:
+        edge_operator_name:
+
+    Returns:
+
+    """
     node_embeddings = model.input_embedding.numpy()
 
     graph = dataset.graph

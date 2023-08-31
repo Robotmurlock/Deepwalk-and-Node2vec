@@ -169,6 +169,7 @@ class ModelAnalysisConfig:
 
     # Projected embeddings visualization
     visualize_embeddings: bool = True
+    visualize_embeddings_annotate: bool = True
     visualize_embeddings_max_words: int = 1000
     visualize_skip_unk: bool = True
 

@@ -5,9 +5,12 @@ import random
 from typing import Optional, Dict
 
 import networkx as nx
+import pandas as pd
 
 from shallow_encoders.word2vec.dataloader.registry import register_dataset
 from shallow_encoders.graph.random_walk_generator import random_walk_factory
+from shallow_encoders.common.path import ASSETS_PATH
+import os
 
 
 class RandomWalkDataset:
@@ -155,6 +158,43 @@ class KarateClubDataset(RandomWalkDataset):
             'n26': '2', 'n27': '2', 'n28': '2', 'n29': '2', 'n30': '2',
             'n31': '2', 'n32': '2', 'n33': '2', 'n34': '2'
         }
+
+        super().__init__(
+            graph=graph,
+            walks_per_node=walks_per_node,
+            walk_length=walk_length,
+            method=method,
+            labels=labels,
+            **kwargs
+        )
+
+
+@register_dataset('graph_cora')
+class CoraDataset(RandomWalkDataset):
+    """
+    Cora graph dataset.
+    Reference: https://graphsandnetworks.com/the-cora-dataset/
+    """
+    def __init__(self, walks_per_node: int, walk_length: int, method: str = 'deepwalk', **kwargs):
+        cora_dirpath = os.path.join(ASSETS_PATH, 'cora')
+        cora_edges_path = os.path.join(cora_dirpath, 'cora.cites')
+        cora_nodes_path = os.path.join(cora_dirpath, 'cora.content')
+
+        # Parsing edges data
+        edge_list = pd.read_csv(cora_edges_path, sep='\t', header=None, names=['target', 'source'])
+        edge_list = edge_list.astype('str')
+        edge_list.target = 'n' + edge_list.target  # add `n` prefix to each paper id
+        edge_list.source = 'n' + edge_list.source  # add `n` prefix to each paper id
+        edge_list['label'] = 'cites'
+        graph = nx.from_pandas_edgelist(edge_list, edge_attr='label')
+
+        # Parsing nodes data
+        feature_names = ['w_{}'.format(ii) for ii in range(1433)]
+        column_names = feature_names + ['subject']
+        node_data = pd.read_csv(cora_nodes_path, sep='\t', header=None, names=column_names)
+        node_data.index = node_data.index.astype(str)
+        node_data.index = 'n' + node_data.index  # add `n` prefix to each paper id
+        labels = node_data.subject.to_dict()
 
         super().__init__(
             graph=graph,

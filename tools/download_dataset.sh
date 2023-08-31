@@ -16,20 +16,25 @@ wiki_text_103="https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-1
 
 # Graph datasets
 cora="https://linqs-data.soe.ucsc.edu/public/lbc/cora.tgz"
+ppi="http://snap.stanford.edu/graphsage/ppi.zip"
 
 # Download and unzip dataset based on the argument
 case $1 in
     "wiki-text-2")
-        wget "$wiki_text_2" -O assets/wikitext-2-v1.zip
-        unzip assets/wikitext-2-v1.zip -d assets/
+        wget "$wiki_text_2" -O assets/wikitext-2.zip
+        unzip assets/wikitext-2.zip -d assets/
         ;;
     "wiki-text-103")
-        wget "$wiki_text_103" -O assets/wikitext-103-v1.zip
-        unzip assets/wikitext-103-v1.zip -d assets/
+        wget "$wiki_text_103" -O assets/wikitext-103.zip
+        unzip assets/wikitext-103.zip -d assets/
         ;;
     "cora")
         wget "$cora" -O assets/cora.tgz
         tar -xvf assets/cora.tgz -C assets/
+        ;;
+    "ppi")
+        wget $ppi -O assets/ppi.zip
+        unzip assets/ppi.zip -d assets/
         ;;
     *)
         echo "Unknown dataset name: $1"

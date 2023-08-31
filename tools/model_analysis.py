@@ -81,11 +81,13 @@ def show_closest_pairs_for_each_word(
 
     logger.info(f'Saved closest pairs analysis result at path "{result_path}".')
 
+
 def visualize_embeddings(
     model: W2VBase,
     dataset: W2VDataset,
     output_path: str,
     max_words: int,
+    annotate: bool,
     skip_unk: bool
 ) -> None:
     """
@@ -97,6 +99,7 @@ def visualize_embeddings(
         dataset: Dataset
         output_path: Result directory path
         max_words: Maximum number of words to use (filtering by frequency)
+        annotate: Show node text
         skip_unk: Skip unk token during visualization
     """
     embeddings = model.input_embedding.numpy()
@@ -139,15 +142,18 @@ def visualize_embeddings(
         for label in unique_labels:
             label_color = label_to_color[label]
             label_indices = [i for i, w in enumerate(words) if dataset.labels[w] == label]
-            plt.scatter(embeddings[label_indices, 0], embeddings[label_indices, 1], alpha=0.6, color=label_color)
+            plt.scatter(embeddings[label_indices, 0], embeddings[label_indices, 1], alpha=0.6, color=label_color, label=label)
 
     # Annotate the words on the visualization
-    for i, word in enumerate(words):
-        plt.annotate(word, (embeddings[i, 0], embeddings[i, 1]))
+    if annotate:
+        for i, word in enumerate(words):
+            plt.annotate(word, (embeddings[i, 0], embeddings[i, 1]))
 
     plt.title(f'Word Embeddings Visualization ({max_words} most frequent words)')
     plt.xlabel('Dimension 1')
     plt.ylabel('Dimension 2')
+    if unique_labels is not None:
+        plt.legend()
     plt.grid(True)
 
     # Save the figure
@@ -240,6 +246,7 @@ def main(cfg: DictConfig) -> None:
             dataset=dataset,
             output_path=analysis_exp_path,
             max_words=cfg.analysis.visualize_embeddings_max_words,
+            annotate=cfg.analysis.visualize_embeddings_annotate,
             skip_unk=cfg.analysis.visualize_skip_unk
         )
 
