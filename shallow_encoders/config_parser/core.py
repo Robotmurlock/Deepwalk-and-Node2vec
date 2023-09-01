@@ -19,6 +19,7 @@ from shallow_encoders.common.path import RUNS_PATH
 from shallow_encoders.word2vec.dataloader.torch_dataset import W2VDataset, W2VCollateFunctional
 from shallow_encoders.word2vec.model import W2VBase
 from shallow_encoders.word2vec.trainer import Word2VecTrainer
+from shallow_encoders.split import SplitAlgorithm
 
 
 @dataclass
@@ -189,9 +190,26 @@ class ModelAnalysisConfig:
 @dataclass
 class GraphDownstreamNodeClassificationConfig:
     enable: bool = True
-    train_ratio: float = 0.5
     n_experiments: int = 10
     visualize: bool = True
+    split_algorithm: Optional[dict] = None
+
+    def instantiate_split_algorithm(self) -> SplitAlgorithm:
+        """
+        Instantiates a split algorithm for the node classification downstream task.
+
+        Returns:
+            Split algorithm
+        """
+        split_algorithm_cfg = self.split_algorithm
+        if split_algorithm_cfg is None:
+            self.split_algorithm = {
+                '_target_': 'shallow_encoders.split.TrainTestRatioSplit',
+                'random_state': 42,
+                'train_ratio': 0.5,
+                'stratify': False
+            }
+        return instantiate(OmegaConf.create(split_algorithm_cfg))
 
 
 @dataclass

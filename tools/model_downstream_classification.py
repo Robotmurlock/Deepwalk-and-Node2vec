@@ -19,6 +19,7 @@ from sklearn.linear_model import LogisticRegression
 
 from shallow_encoders.common.path import CONFIG_PATH
 from shallow_encoders.graph import edge_operators
+from shallow_encoders.split import SplitAlgorithm
 from shallow_encoders.word2vec.dataloader.torch_dataset import W2VDataset
 from shallow_encoders.word2vec.model import W2VBase
 from tools import conventions
@@ -79,7 +80,7 @@ def create_and_fit_classification_model(
     Returns:
         Classifier, accuracy
     """
-    clf = LogisticRegression(max_iter=1_000)
+    clf = LogisticRegression(max_iter=10_000)
     clf.fit(X_train, y_train)
 
     # Evaluate model
@@ -91,7 +92,7 @@ def perform_node_classification(
     model: W2VBase,
     dataset: W2VDataset,
     output_path: str,
-    train_ratio: float,
+    split_algorithm: SplitAlgorithm,
     n_experiments: int,
     visualize: bool
 ) -> None:
@@ -103,7 +104,7 @@ def perform_node_classification(
         model: Graph Shallow Encoder
         dataset: Dataset
         output_path: Output path
-        train_ratio: How much of data is used to train a linear classifier
+        split_algorithm: Split algorithm
         n_experiments: Number of experiments to perform
         visualize: Visualize best model
     """
@@ -111,21 +112,17 @@ def perform_node_classification(
     vertices = dataset.vocab.get_itos()[1:]  # Skip `<unk>`
     vertex_labels = [dataset.labels[v] for v in vertices]
     y = np.array(labels_to_integers(vertex_labels), dtype=np.float32)
-
-    n_samples = y.shape[0]
-    n_train_samples = round(train_ratio * n_samples)
-
     best_accuracy, best_clf = None, None
     accuracy_sum = 0.0
-    for i in range(n_experiments):
-        # Create train dataset
-        indices = list(range(n_samples))
-        random.shuffle(indices)
-        sampled_indices = sorted(indices[:n_train_samples])
-        X_train = X[sampled_indices, :].copy()
-        y_train = y[sampled_indices].copy()
 
-        clf, accuracy = create_and_fit_classification_model(X_train, y_train, X, y)
+    for i in range(n_experiments):
+        split_algorithm.random_state = i
+        split = split_algorithm(X, y)
+
+        X_train, y_train, X_test, y_test = \
+            split['X_train'], split['y_train'], split['X_test'], split['y_test']
+
+        clf, accuracy = create_and_fit_classification_model(X_train, y_train, X_test, y_test)
         accuracy_sum += accuracy
 
         if best_accuracy is None or accuracy >= best_accuracy:
@@ -147,7 +144,7 @@ def perform_node_classification(
             plt.scatter(X_label[:, 0], X_label[:, 1], color=color, label=label)
 
         plot_logistic_regression_decision_boundary_line(X, best_clf)
-        plt.title(f'Classification on embeddings with {100 * train_ratio:.2f}% known data - Accuracy {100 * best_accuracy:.2f}')
+        plt.title(f'Classification on embeddings - Accuracy {100 * best_accuracy:.2f}')
         plt.xlabel('Dimension 1')
         plt.ylabel('Dimension 2')
         plt.legend()
@@ -306,7 +303,7 @@ def main(cfg: DictConfig) -> None:
             model=pl_trainer.model,
             dataset=dataset,
             output_path=analysis_exp_path,
-            train_ratio=cfg.downstream.node_classification.train_ratio,
+            split_algorithm=cfg.downstream.node_classification.instantiate_split_algorithm(),
             n_experiments=cfg.downstream.node_classification.n_experiments,
             visualize=cfg.downstream.node_classification.visualize
         )

@@ -65,9 +65,11 @@ downstream:
 
   node_classification:
     enable: true
-    train_ratio: 1.0
     n_experiments: 10
     visualize: false
+    split_algorithm:
+      _target_: shallow_encoders.split.TrainTestRatioSplit
+      train_ratio: 0.5
 
   edge_classification:
     enable: true
