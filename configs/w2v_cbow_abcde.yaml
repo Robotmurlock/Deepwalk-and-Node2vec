@@ -12,7 +12,7 @@ datamodule:
   mode: 'sg'
   context_radius: 1
   max_length: 256
-  min_word_frequency: 0
+  is_graph: false
 
   batch_size: 4
   num_workers: 8

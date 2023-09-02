@@ -12,7 +12,7 @@ datamodule:
   mode: 'sg'
   context_radius: 2
   max_length: 256
-  min_word_frequency: 0
+  is_graph: true
   additional_parameters:
     walks_per_node: 16
     walk_length: 10
@@ -25,7 +25,7 @@ datamodule:
   num_workers: 8
 
 train:
-  experiment: 'SG_exp11_embedding8_neg5_node2vec_p1x0_q2x0'
+  experiment: 'SG_exp01_embedding8_neg5_node2vec_p1x0_q2x0'
   accelerator: 'gpu'  # (cpu, gpu)
   devices: '1'
 

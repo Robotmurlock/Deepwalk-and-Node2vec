@@ -2,6 +2,7 @@
 ConfigParser for
 """
 import copy
+import logging
 from dataclasses import field
 from typing import Iterator
 from typing import Union, Optional
@@ -16,10 +17,12 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
 from shallow_encoders.common.path import RUNS_PATH
-from shallow_encoders.word2vec.dataloader.torch_dataset import W2VDataset, W2VCollateFunctional
+from shallow_encoders.split import SplitAlgorithm
+from shallow_encoders.word2vec.dataloader.torch_dataset import W2VDataset, GraphDataset, W2VCollateFunctional
 from shallow_encoders.word2vec.model import W2VBase
 from shallow_encoders.word2vec.trainer import Word2VecTrainer
-from shallow_encoders.split import SplitAlgorithm
+
+logger = logging.getLogger('ConfigParser')
 
 
 @dataclass
@@ -97,22 +100,38 @@ class DatamoduleConfig:
     mode: str
     context_radius: int
     max_length: int
-    min_word_frequency: int
+    is_graph: bool
 
     batch_size: int
     num_workers: int
 
-    # Additional dataset config
+    # NLP config
+    min_word_frequency: int = 0
     lemmatize: bool = False
+
+    # Dataset specific parameters
     additional_parameters: dict = field(default_factory=dict)
 
-    def instantiate_dataset(self) -> W2VDataset:
+    def instantiate_dataset(self) -> Union[W2VDataset, GraphDataset]:
         """
-        Instantiates dateset from config.
+        Instantiates dateset from config (graph or W2VDataset).
 
         Returns:
             Dataset for training.
         """
+        if self.is_graph:
+            if self.min_word_frequency > 0:
+                logger.warning(f'Min word frequency has no effect for graph datasets.')
+
+            if self.lemmatize:
+                logger.warning(f'Lemmatization does not have effect on graph datasets.')
+
+            return GraphDataset(
+                dataset_name=self.dataset_name,
+                context_radius=self.context_radius,
+                additional_parameters=self.additional_parameters
+            )
+
         return W2VDataset(
             dataset_name=self.dataset_name,
             context_radius=self.context_radius,

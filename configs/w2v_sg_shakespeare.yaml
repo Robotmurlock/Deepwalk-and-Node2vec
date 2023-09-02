@@ -13,6 +13,7 @@ datamodule:
   max_length: 128
   min_word_frequency: 10
   lemmatize: true
+  is_graph: false
 
   batch_size: 32
   num_workers: 8

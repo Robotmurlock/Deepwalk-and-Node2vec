@@ -70,6 +70,7 @@ class W2VDataset(IterableDataset):
         context_radius: int = 5,
         min_word_frequency: int = 20,
         lemmatize: bool = False,
+        sort_by_frequency: bool = True,
         additional_parameters: Optional[dict] = None
     ):
         """
@@ -87,11 +88,18 @@ class W2VDataset(IterableDataset):
         self._lemmatize = lemmatize
         self._dataset = DATASET_REGISTRY[dataset_name](**additional_parameters)
 
-        tokenslist = list(self.pipeline)  # IMPORTANT: This loads everything in memory
+        tokenslist = list(self.get_iterator(apply_filter=False))  # IMPORTANT: This loads everything in memory
 
         # This is not efficient but is necessary in order to keep vocabulary token indices
-        all_tokens = sorted(list(set([t for tokens in tokenslist for t in tokens])))
-        all_tokens = [[t] for t in all_tokens]  # list[str] -> list[list[str]]
+        if sort_by_frequency:
+            # It is expected that NLP datasets are deterministic
+            # Words will always be sorted by the frequency
+            all_tokens = tokenslist
+        else:
+            # This makes sure that graph node order is always the same and does not depend
+            # on the non-deterministic random walk graph generation
+            all_tokens = list(set([t for tokens in tokenslist for t in tokens]))
+            all_tokens = [[t] for t in all_tokens]  # list[str] -> list[list[str]]
 
         self._vocab = build_vocab_from_iterator(
             iterator=all_tokens,
@@ -113,17 +121,21 @@ class W2VDataset(IterableDataset):
         # State
         self._pipeline_state = None
 
-    @property
-    def pipeline(self) -> Iterator:
+    def get_iterator(self, apply_filter: bool = True) -> Iterator:
         """
         Get iterator for post-processed sentences.
+
+        Args:
+            apply_filter: Apply sentence filter (e.g. based on sentence lenght)
 
         Returns:
             Iterator over post-processed sentences.
         """
-        return filter(lambda x: x is not None, map(self.sentence_pipeline, self._dataset))
+        filter_func = lambda x: x is not None
+        process_func = lambda s: self.sentence_pipeline(s, apply_filter=apply_filter)
+        return filter(filter_func, map(process_func, self._dataset))
 
-    def sentence_pipeline(self, sentence: str) -> Optional[List[str]]:
+    def sentence_pipeline(self, sentence: str, apply_filter: bool = True) -> Optional[List[str]]:
         """
         Performs sentence pipeline.
         - Lemmatization (optional) - NLP specific
@@ -132,13 +144,14 @@ class W2VDataset(IterableDataset):
 
         Args:
             sentence: Raw sentence
+            apply_filter: Applies sentence filter
 
         Returns:
-            List of postprocessed words
+            List of post-processed sentence words
         """
         sentence = lemmatize_sentence(sentence) if self._lemmatize else sentence
         tokens = tokenize(sentence)
-        if 2 * self._context_radius + 1 > len(tokens):
+        if apply_filter and len(tokens) < 2 * self._context_radius + 1:
             return None
         return tokens
 
@@ -172,12 +185,61 @@ class W2VDataset(IterableDataset):
     @property
     def has_labels(self) -> bool:
         """
+        Compatibility with GraphDataset - Does not support labels
+
+        Returns:
+            False
+        """
+        return False
+
+    @property
+    def labels(self) -> Dict[str, str]:
+        """
+        Gets dataset word (node) labels.
+
+        Returns:
+            Dataset labels
+        """
+        raise NotImplemented('This function is not implemented!')
+
+    def __iter__(self) -> 'W2VDataset':
+        self._pipeline_state = self.get_iterator()
+        return self
+
+    def __next__(self) -> torch.Tensor:
+        tokens = next(self._pipeline_state)
+        indices = self._vocab(tokens)
+        indices = torch.tensor(indices, dtype=torch.long)
+        return indices
+
+
+class GraphDataset(W2VDataset):
+    def __init__(
+        self,
+        dataset_name: str,
+        context_radius: int = 5,
+        additional_parameters: Optional[dict] = None
+    ):
+        super().__init__(
+            dataset_name=dataset_name,
+            context_radius=context_radius,
+            additional_parameters=additional_parameters,
+            lemmatize=False,
+            min_word_frequency=0,
+            sort_by_frequency=False
+        )
+
+        assert isinstance(self._dataset, RandomWalkDataset), f'Expected RandomWalkDataset dataset but got {type(self._dataset)}!'
+
+    @property
+    def has_labels(self) -> bool:
+        """
         Check if dataset supports labels.
 
         Returns:
             True if dataset supports labels else False
         """
-        return isinstance(self._dataset, RandomWalkDataset) and self._dataset.has_labels
+        return self._dataset.has_labels
 
     @property
     def labels(self) -> Dict[str, str]:
@@ -191,43 +253,21 @@ class W2VDataset(IterableDataset):
 
     @property
     def has_features(self) -> bool:
-        return isinstance(self._dataset, RandomWalkDataset) and self._dataset.has_features
+        return self._dataset.has_features
 
     @property
     def features(self) -> Dict[str, np.ndarray]:
         return self._dataset.features
 
     @property
-    def is_graph(self) -> bool:
-        """
-        Check if dataset is a graph
-
-        Returns:
-            True if dataset supports labels else False
-        """
-        return isinstance(self._dataset, RandomWalkDataset)
-
-    @property
     def graph(self) -> nx.Graph:
         """
-        FIXME: Create factory for torch dataset
-
         Gets dataset graph.
 
         Returns:
             Dataset graph
         """
         return self._dataset.graph
-
-    def __iter__(self) -> 'W2VDataset':
-        self._pipeline_state = self.pipeline
-        return self
-
-    def __next__(self) -> torch.Tensor:
-        tokens = next(self._pipeline_state)
-        indices = self._vocab(tokens)
-        indices = torch.tensor(indices, dtype=torch.long)
-        return indices
 
 
 class W2VCollateFunctional:

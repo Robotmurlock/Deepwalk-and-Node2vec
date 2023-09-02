@@ -21,7 +21,7 @@ from tqdm import tqdm
 from shallow_encoders.common.path import CONFIG_PATH
 from shallow_encoders.graph import edge_operators
 from shallow_encoders.split import SplitAlgorithm
-from shallow_encoders.word2vec.dataloader.torch_dataset import W2VDataset
+from shallow_encoders.word2vec.dataloader.torch_dataset import GraphDataset
 from shallow_encoders.word2vec.model import W2VBase
 from tools import conventions
 from tools.utils import setup_pipeline, MATPLOTLIB_COLORS
@@ -83,7 +83,8 @@ def create_and_fit_classification_model(
     Returns:
         Classifier, accuracy
     """
-    clf = LogisticRegression(**classifier_params)  #  LogisticRegression(max_iter=10_000, C=1e-4)
+    classifier_params = classifier_params if classifier_params is not None else {}
+    clf = LogisticRegression(**classifier_params)
     clf.fit(X_train, y_train)
 
     # Evaluate model
@@ -93,7 +94,7 @@ def create_and_fit_classification_model(
 
 def perform_node_classification(
     model: W2VBase,
-    dataset: W2VDataset,
+    dataset: GraphDataset,
     output_path: str,
     split_algorithm: SplitAlgorithm,
     n_experiments: int,
@@ -226,7 +227,7 @@ def create_edge_embeddings(
 
 def perform_edge_classification(
     model: W2VBase,
-    dataset: W2VDataset,
+    dataset: GraphDataset,
     train_ratio: float,
     n_experiments: int,
     edge_operator_name: str,
@@ -302,7 +303,9 @@ def perform_edge_classification(
 @hydra.main(config_path=CONFIG_PATH, config_name='w2v_sg_graph_triplets.yaml')
 def main(cfg: DictConfig) -> None:
     cfg = setup_pipeline(cfg, task='downstream-classification')
-    dataset = cfg.datamodule.instantiate_dataset()
+    assert cfg.datamodule.is_graph, 'This script supports only graph datasets!'
+
+    dataset: GraphDataset = cfg.datamodule.instantiate_dataset()
     checkpoint_path = conventions.get_checkpoint_path(cfg.path.output_dir, cfg.datamodule.dataset_name,
                                                       cfg.train.experiment, cfg.analysis.checkpoint)
     pl_trainer = cfg.instantiate_trainer(dataset=dataset, checkpoint_path=checkpoint_path)

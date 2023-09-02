@@ -252,6 +252,7 @@ def main(cfg: DictConfig) -> None:
 
     if cfg.analysis.semantics_test.enable:
         logger.info('Performing simple semantic test... This test is specialized for Shakespeare and might not work for other datasets.')
+        assert not cfg.datamodule.is_graph, 'Semantics test is not supported for graph datasets!'
         semantics_test(
             model=pl_trainer.model,
             dataset=dataset,

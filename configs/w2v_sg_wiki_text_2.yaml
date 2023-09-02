@@ -12,6 +12,7 @@ datamodule:
   context_radius: 5
   max_length: 256
   min_word_frequency: 10
+  if_graph: false
 
   batch_size: 32
   num_workers: 8
