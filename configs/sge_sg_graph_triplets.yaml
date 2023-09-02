@@ -43,22 +43,30 @@ train:
 analysis:
   checkpoint: 'last.ckpt'
 
-  closest_pairs: true
-  closest_pairs_per_word: 2
-  visualize_embeddings: true
-  semantics_test: false
+  closest_pairs:
+    enable: true
+    pairs_per_word: 2
+
+  visualize_embeddings:
+    enable: true
+
+  semantics_test:
+    enable: false
 
 downstream:
   checkpoint: 'last.ckpt'
 
-  # node classification
-  node_classification: true
-  node_classification_train_ratio: 1.0
-  node_classification_n_experiments: 10
-  node_classification_visualize: true
+  node_classification:
+    enable: true
+    n_experiments: 10
+    visualize: true
+    split_algorithm:
+      _target_: shallow_encoders.split.TrainTestRatioSplit
+      train_ratio: 0.5
+      test_all: true
 
-  # Link classification
-  edge_classification: true
-  edge_operator_name: 'hadamard'
-  edge_classification_train_ratio: 0.8
-  edge_classification_n_experiments: 100
+  edge_classification:
+    enable: true
+    operator_name: 'hadamard'
+    train_ratio: 0.8
+    n_experiments: 100

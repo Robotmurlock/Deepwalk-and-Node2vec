@@ -39,11 +39,14 @@ train:
 analysis:
   checkpoint: 'last.ckpt'
 
-  closest_pairs: true
-  closest_max_words: 500
-  closest_pairs_per_word: 5
+  closest_pairs:
+    enable: true
+    pairs_per_word: 3
+    max_words: 500
 
-  visualize_embeddings: true
-  visualize_embeddings_max_words: 250
+  visualize_embeddings:
+    enable: true
+    max_words: 250
 
-  semantics_test: true
+  semantics_test:
+    enable: true

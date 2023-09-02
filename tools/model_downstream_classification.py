@@ -7,7 +7,7 @@ import logging
 import os
 import random
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import hydra
 import matplotlib.pyplot as plt
@@ -16,6 +16,7 @@ import numpy
 import numpy as np
 from omegaconf import DictConfig
 from sklearn.linear_model import LogisticRegression
+from tqdm import tqdm
 
 from shallow_encoders.common.path import CONFIG_PATH
 from shallow_encoders.graph import edge_operators
@@ -66,7 +67,8 @@ def create_and_fit_classification_model(
     X_train: np.ndarray,
     y_train: np.ndarray,
     X: np.ndarray,
-    y: np.ndarray
+    y: np.ndarray,
+    classifier_params: Optional[dict] = None
 ) -> Tuple[LogisticRegression, float]:
     """
     Creates, fits and evaluates linear logistic regression model to given data.
@@ -76,11 +78,12 @@ def create_and_fit_classification_model(
         y_train: Train labels
         X: Prediction input data
         y: Prediction labels
+        classifier_params: Classifier configuration
 
     Returns:
         Classifier, accuracy
     """
-    clf = LogisticRegression(max_iter=10_000)
+    clf = LogisticRegression(**classifier_params)  #  LogisticRegression(max_iter=10_000, C=1e-4)
     clf.fit(X_train, y_train)
 
     # Evaluate model
@@ -94,7 +97,8 @@ def perform_node_classification(
     output_path: str,
     split_algorithm: SplitAlgorithm,
     n_experiments: int,
-    visualize: bool
+    visualize: bool,
+    classifier_params: Optional[dict] = None
 ) -> None:
     """
     Performs node classification downstream tasks where input features
@@ -107,22 +111,31 @@ def perform_node_classification(
         split_algorithm: Split algorithm
         n_experiments: Number of experiments to perform
         visualize: Visualize best model
+        classifier_params: Classifier configuration
     """
     X = model.input_embedding.numpy()[1:, :]  # Skip `<unk>`
     vertices = dataset.vocab.get_itos()[1:]  # Skip `<unk>`
     vertex_labels = [dataset.labels[v] for v in vertices]
+
+    if dataset.has_features:
+        logger.info('Dataset supports features. Loading...')
+        vertex_features = np.stack([dataset.features[v] for v in vertices])
+        X = np.concatenate([X, vertex_features], axis=1)
+
     y = np.array(labels_to_integers(vertex_labels), dtype=np.float32)
+    logger.info(f'Dataset info: {X.shape=}, {y.shape=}.')
+
     best_accuracy, best_clf = None, None
     accuracy_sum = 0.0
 
-    for i in range(n_experiments):
+    for i in tqdm(range(n_experiments), unit='experiment', desc='node-classification', total=n_experiments):
         split_algorithm.random_state = i
         split = split_algorithm(X, y)
 
         X_train, y_train, X_test, y_test = \
             split['X_train'], split['y_train'], split['X_test'], split['y_test']
 
-        clf, accuracy = create_and_fit_classification_model(X_train, y_train, X_test, y_test)
+        clf, accuracy = create_and_fit_classification_model(X_train, y_train, X_test, y_test, classifier_params=classifier_params)
         accuracy_sum += accuracy
 
         if best_accuracy is None or accuracy >= best_accuracy:
@@ -216,7 +229,8 @@ def perform_edge_classification(
     dataset: W2VDataset,
     train_ratio: float,
     n_experiments: int,
-    edge_operator_name: str
+    edge_operator_name: str,
+    classifier_params: Optional[dict] = None
 ) -> None:
     """
     Performs edge classification for given model on given dataset.
@@ -224,11 +238,10 @@ def perform_edge_classification(
     Args:
         model: Shallow graph encoder network.
         dataset: Dataset
-        train_ratio:
-        n_experiments:
-        edge_operator_name:
-
-    Returns:
+        train_ratio: Percentage of positive edges to use (Number of negative edges is equal to positive)
+        n_experiments: Number of experiments to performs
+        edge_operator_name: Edge operator name
+        classifier_params: Classifier configuration
 
     """
     node_embeddings = model.input_embedding.numpy()
@@ -241,7 +254,7 @@ def perform_edge_classification(
 
     best_accuracy = None
     accuracy_sum = 0.0
-    for i in range(n_experiments):
+    for _ in tqdm(range(n_experiments), unit='experiment', desc='edge-classification', total=n_experiments):
         # Create train dataset
         n_train_samples = round(train_ratio * n_edges)
         n_val_samples = n_edges - n_train_samples
@@ -274,7 +287,7 @@ def perform_edge_classification(
             edge_operator=edge_operator
         )
 
-        _, accuracy = create_and_fit_classification_model(X_train, y_train, X, y)
+        _, accuracy = create_and_fit_classification_model(X_train, y_train, X, y, classifier_params=classifier_params)
         accuracy_sum += accuracy
 
         if best_accuracy is None or accuracy >= best_accuracy:
@@ -305,7 +318,8 @@ def main(cfg: DictConfig) -> None:
             output_path=analysis_exp_path,
             split_algorithm=cfg.downstream.node_classification.instantiate_split_algorithm(),
             n_experiments=cfg.downstream.node_classification.n_experiments,
-            visualize=cfg.downstream.node_classification.visualize
+            visualize=cfg.downstream.node_classification.visualize,
+            classifier_params=cfg.downstream.node_classification.classifier_params
         )
 
     if cfg.downstream.edge_classification.enable:
@@ -314,7 +328,8 @@ def main(cfg: DictConfig) -> None:
             dataset=dataset,
             edge_operator_name=cfg.downstream.edge_classification.operator_name,
             train_ratio=cfg.downstream.edge_classification.train_ratio,
-            n_experiments=cfg.downstream.edge_classification.n_experiments
+            n_experiments=cfg.downstream.edge_classification.n_experiments,
+            classifier_params=cfg.downstream.edge_classification.classifier_params
         )
 
 

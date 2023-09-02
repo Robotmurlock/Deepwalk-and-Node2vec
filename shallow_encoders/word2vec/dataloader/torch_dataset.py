@@ -7,6 +7,7 @@ from collections import Counter
 from typing import List, Tuple, Optional, Dict, Iterator
 
 import networkx as nx
+import numpy as np
 import torch
 from nltk.stem import WordNetLemmatizer
 from torch.utils.data import IterableDataset
@@ -187,6 +188,14 @@ class W2VDataset(IterableDataset):
             Dataset labels
         """
         return self._dataset.labels
+
+    @property
+    def has_features(self) -> bool:
+        return isinstance(self._dataset, RandomWalkDataset) and self._dataset.has_features
+
+    @property
+    def features(self) -> Dict[str, np.ndarray]:
+        return self._dataset.features
 
     @property
     def is_graph(self) -> bool:

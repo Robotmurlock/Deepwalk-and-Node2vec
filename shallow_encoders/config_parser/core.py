@@ -193,6 +193,7 @@ class GraphDownstreamNodeClassificationConfig:
     n_experiments: int = 10
     visualize: bool = True
     split_algorithm: Optional[dict] = None
+    classifier_params: Optional[dict] = None
 
     def instantiate_split_algorithm(self) -> SplitAlgorithm:
         """
@@ -218,6 +219,7 @@ class GraphDownstreamEdgeClassificationConfig:
     operator_name: str = 'hadamard'
     train_ratio: float = 0.5
     n_experiments: int = 10
+    classifier_params: Optional[dict] = None
 
 
 @dataclass

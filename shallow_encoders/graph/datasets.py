@@ -1,16 +1,17 @@
 """
 Implementation of graph datasets specialized for W2V
 """
+import os
 import random
 from typing import Optional, Dict
 
 import networkx as nx
+import numpy as np
 import pandas as pd
 
-from shallow_encoders.word2vec.dataloader.registry import register_dataset
-from shallow_encoders.graph.random_walk_generator import random_walk_factory
 from shallow_encoders.common.path import ASSETS_PATH
-import os
+from shallow_encoders.graph.random_walk_generator import random_walk_factory
+from shallow_encoders.word2vec.dataloader.registry import register_dataset
 
 
 class RandomWalkDataset:
@@ -25,7 +26,8 @@ class RandomWalkDataset:
         walk_length: int,
         method: str = 'deepwalk',
         method_params: Optional[dict] = None,
-        labels: Optional[Dict[str, str]] = None
+        labels: Optional[Dict[str, str]] = None,
+        features: Optional[Dict[str, np.ndarray]] = None
     ):
         """
         Args:
@@ -39,6 +41,7 @@ class RandomWalkDataset:
         self._graph = graph
         self._nodes = list(self._graph)
         self._labels = labels
+        self._features = features
         random.shuffle(self._nodes)
 
         method_params = {} if method_params is None else method_params
@@ -107,9 +110,17 @@ class RandomWalkDataset:
         Returns:
             Graph node labels
         """
-        assert self._labels is not None, 'This dataset does not have any labels!'
+        assert self.has_labels, 'This dataset does not have any labels!'
         return self._labels
 
+    @property
+    def has_features(self) -> bool:
+        return self._features is not None
+
+    @property
+    def features(self) -> Dict[str, np.ndarray]:
+        assert self.has_features, 'This dataset does not have any features!'
+        return self._features
 
 
 @register_dataset('graph_triplets')
@@ -196,11 +207,15 @@ class CoraDataset(RandomWalkDataset):
         node_data.index = 'n' + node_data.index  # add `n` prefix to each paper id
         labels = node_data.subject.to_dict()
 
+        # Parsing features data
+        features = {k: np.array(v) for k, v in node_data[feature_names].T.to_dict('list').items()}
+
         super().__init__(
             graph=graph,
             walks_per_node=walks_per_node,
             walk_length=walk_length,
             method=method,
             labels=labels,
+            features=features,
             **kwargs
         )

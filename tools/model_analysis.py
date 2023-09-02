@@ -149,7 +149,7 @@ def visualize_embeddings(
         for i, word in enumerate(words):
             plt.annotate(word, (embeddings[i, 0], embeddings[i, 1]))
 
-    plt.title(f'Word Embeddings Visualization ({max_words} most frequent words)')
+    plt.title(f'Word Embeddings Visualization')
     plt.xlabel('Dimension 1')
     plt.ylabel('Dimension 2')
     if unique_labels is not None:
@@ -250,7 +250,7 @@ def main(cfg: DictConfig) -> None:
             skip_unk=cfg.analysis.visualize_embeddings.skip_unk
         )
 
-    if cfg.analysis.semantics_test:
+    if cfg.analysis.semantics_test.enable:
         logger.info('Performing simple semantic test... This test is specialized for Shakespeare and might not work for other datasets.')
         semantics_test(
             model=pl_trainer.model,

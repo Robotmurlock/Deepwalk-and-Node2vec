@@ -3,7 +3,7 @@ defaults:
 
 model:
   _target_: shallow_encoders.word2vec.model.SkipGram
-  embedding_size: 16
+  embedding_size: 8
   max_norm: null
   # vocab_size - unknown until dataset is loaded
 
@@ -16,7 +16,6 @@ datamodule:
   additional_parameters:
     walks_per_node: 16
     walk_length: 10
-    # method: deepwalk
     method: node2vec
     method_params:
       p: 1
@@ -26,7 +25,7 @@ datamodule:
   num_workers: 8
 
 train:
-  experiment: 'SG_exp07_embedding16_node2vec_p1x0_q2x0'
+  experiment: 'SG_exp11_embedding8_neg5_node2vec_p1x0_q2x0'
   accelerator: 'gpu'  # (cpu, gpu)
   devices: '1'
 
@@ -38,11 +37,11 @@ train:
 
   scheduler:
     _target_: torch.optim.lr_scheduler.StepLR
-    step_size: 10
+    step_size: 20
     gamma: 0.1
 
   loss:
-    negative_samples: 1
+    negative_samples: 5
 
 analysis:
   checkpoint: 'last.ckpt'
@@ -69,10 +68,15 @@ downstream:
     visualize: false
     split_algorithm:
       _target_: shallow_encoders.split.TrainTestRatioSplit
-      train_ratio: 0.5
+      train_ratio: 0.75
+    classifier_params:
+      C: 1e-3
+      max_iter: 1_000
 
   edge_classification:
     enable: true
     operator_name: 'hadamard'
     train_ratio: 0.5
     n_experiments: 10
+    classifier_params:
+      max_iter: 1_000

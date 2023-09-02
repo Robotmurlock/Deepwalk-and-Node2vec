@@ -49,16 +49,18 @@ class TrainTestRatioSplit(SplitAlgorithm):
     """
     Splits data into train and test based on the `train_ratio`. Supports stratified split.
     """
-    def __init__(self, train_ratio: float, stratify: bool = False, random_state: Optional[int] = None):
+    def __init__(self, train_ratio: float, stratify: bool = False, test_all: bool = False, random_state: Optional[int] = None):
         """
         Args:
             train_ratio: Train to val ratio
             stratify: Use stratified split
             random_state: Seed
+            test_all: Use full dataset for test
         """
         super().__init__(random_state=random_state)
         self._train_ratio = train_ratio
         self._stratify = stratify
+        self._test_all = test_all
 
     def split(self, X: np.ndarray, y: np.ndarray) -> Dict[str, np.ndarray]:
         X_train, X_test, y_train, y_test = train_test_split(
@@ -71,8 +73,8 @@ class TrainTestRatioSplit(SplitAlgorithm):
         return {
             'X_train': X_train.copy(),
             'y_train': y_train.copy(),
-            'X_test': X_test.copy(),
-            'y_test': y_test.copy()
+            'X_test': X_test.copy() if not self._test_all else X.copy(),
+            'y_test': y_test.copy() if not self._test_all else y.copy()
         }
 
 
