@@ -200,7 +200,7 @@ class CoraDataset(RandomWalkDataset):
         graph = nx.from_pandas_edgelist(edge_list, edge_attr='label')
 
         # Parsing nodes data
-        feature_names = ['w_{}'.format(ii) for ii in range(1433)]
+        feature_names = [f'w_{ii}' for ii in range(1433)]
         column_names = feature_names + ['subject']
         node_data = pd.read_csv(cora_nodes_path, sep='\t', header=None, names=column_names)
         node_data.index = node_data.index.astype(str)

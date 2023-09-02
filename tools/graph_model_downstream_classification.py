@@ -12,7 +12,6 @@ from typing import List, Tuple, Optional
 import hydra
 import matplotlib.pyplot as plt
 import networkx as nx
-import numpy
 import numpy as np
 from omegaconf import DictConfig
 from sklearn.linear_model import LogisticRegression
@@ -274,7 +273,7 @@ def perform_edge_classification(
         y_train = np.array(n_train_samples * [1] + n_train_samples * [0], dtype=np.float32)
         all_edges = edges + train_negative_edges + val_negative_edges
         all_edges = [(token_to_index[s], token_to_index[e]) for s, e in all_edges]
-        y = numpy.array(n_edges * [1] + n_train_samples * [0] + n_val_samples * [0], dtype=np.float32)
+        y = np.array(n_edges * [1] + n_train_samples * [0] + n_val_samples * [0], dtype=np.float32)
 
         X_train = create_edge_embeddings(
             node_embeddings=node_embeddings,

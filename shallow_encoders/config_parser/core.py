@@ -121,10 +121,10 @@ class DatamoduleConfig:
         """
         if self.is_graph:
             if self.min_word_frequency > 0:
-                logger.warning(f'Min word frequency has no effect for graph datasets.')
+                logger.warning('Min word frequency has no effect for graph datasets.')
 
             if self.lemmatize:
-                logger.warning(f'Lemmatization does not have effect on graph datasets.')
+                logger.warning('Lemmatization does not have effect on graph datasets.')
 
             return GraphDataset(
                 dataset_name=self.dataset_name,

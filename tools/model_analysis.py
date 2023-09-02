@@ -149,7 +149,7 @@ def visualize_embeddings(
         for i, word in enumerate(words):
             plt.annotate(word, (embeddings[i, 0], embeddings[i, 1]))
 
-    plt.title(f'Word Embeddings Visualization')
+    plt.title('Word Embeddings Visualization')
     plt.xlabel('Dimension 1')
     plt.ylabel('Dimension 2')
     if unique_labels is not None:

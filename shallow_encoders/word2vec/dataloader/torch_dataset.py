@@ -98,7 +98,7 @@ class W2VDataset(IterableDataset):
         else:
             # This makes sure that graph node order is always the same and does not depend
             # on the non-deterministic random walk graph generation
-            all_tokens = list(set([t for tokens in tokenslist for t in tokens]))
+            all_tokens = list({t for tokens in tokenslist for t in tokens})
             all_tokens = [[t] for t in all_tokens]  # list[str] -> list[list[str]]
 
         self._vocab = build_vocab_from_iterator(
@@ -200,7 +200,7 @@ class W2VDataset(IterableDataset):
         Returns:
             Dataset labels
         """
-        raise NotImplemented('This function is not implemented!')
+        raise NotImplementedError('This function is not implemented!')
 
     def __iter__(self) -> 'W2VDataset':
         self._pipeline_state = self.get_iterator()
@@ -214,6 +214,9 @@ class W2VDataset(IterableDataset):
 
 
 class GraphDataset(W2VDataset):
+    """
+    Extension of `W2VDataset` dataset specialized for graphs.
+    """
     def __init__(
         self,
         dataset_name: str,
@@ -317,7 +320,6 @@ class W2VCollateFunctional:
 
         batch_inputs, batch_targets = torch.stack(batch_inputs), torch.stack(batch_targets)
         return batch_inputs, batch_targets
-
 
 
 def run_test() -> None:
