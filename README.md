@@ -10,11 +10,12 @@ fundamental to the workings of DeepWalk and node2vec.
 
 ## Table of Contents
 
-- [Features](#features)
+- [Introduction](#introduction)
+- [Experiments](#experiments)
+  * [Word2vec](#word2vec-1)
+  * [DeepWalk and Node2vec](#deepwalk-and-node2vec)
 - [Usage](#usage)
-  * [DeepWalk](#deepwalk)
-  * [Node2Vec](#node2vec)
-  * [Word2Vec](#word2vec)
+- [References](#references)
 
 ## Introduction
 
@@ -71,7 +72,7 @@ word2vec to train learn node embeddings. Three hyperparameters can be observed h
 
 Note that in this implementation we generate new random walks for each epoch.
 
-### node2vec
+### Node2vec
 
 Node2vec is extension of the DeepWalk algorithm. It presents three main contributions compared to the
 original paper:
@@ -383,3 +384,18 @@ on the learned node embeddings and/or node features.
 ```
 python3 tools/graph_model_downstream_classification.py --config-name=<config_name>
 ```
+
+## References
+
+Key papers
+- [Efficient Estimation of Word Representations in Vector Space](http://arxiv.org/abs/1301.3781)
+- [Distributed Representations of Words and Phrases and their Compositionality](http://arxiv.org/abs/1310.4546)
+- [Noise-Contrastive Estimation of Unnormalized Statistical Models, with Applications to Natural Image Statistics](https://www.jmlr.org/papers/volume13/gutmann12a/gutmann12a.pdf)
+- [DeepWalk: Online Learning of Social Representations](http://arxiv.org/abs/1403.6652)
+- [node2vec: Scalable Feature Learning for Networks](http://arxiv.org/abs/1607.00653)
+
+Books:
+- [Graph Representation Learning](https://www.cs.mcgill.ca/~wlh/grl_book/files/GRL_Book.pdf)
+
+Videos:
+- [Stanford CS224W](https://www.youtube.com/watch?v=JAB_plj2rbA&list=PLoROMvodv4rPLKxIpqhjhPgdQy7imNkDn)
